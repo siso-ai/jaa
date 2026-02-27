@@ -1,0 +1,6010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICE — SQL Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #12151c;
+    --surface2: #1a1e28;
+    --border: #252a36;
+    --border-focus: #4a7cff;
+    --text: #c8cdd8;
+    --text-dim: #6b7280;
+    --text-bright: #e8ecf4;
+    --accent: #4a7cff;
+    --accent-dim: #2a4ca0;
+    --ice: #7ec8e3;
+    --ice-dim: #3a6a7e;
+    --success: #34d399;
+    --error: #f87171;
+    --warning: #fbbf24;
+    --font-mono: 'DM Mono', 'Menlo', monospace;
+    --font-serif: 'Instrument Serif', Georgia, serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ────────────────────────────── */
+  header {
+    padding: 20px 32px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    background: linear-gradient(180deg, #0e1118 0%, var(--bg) 100%);
+  }
+
+  header h1 {
+    font-family: var(--font-serif);
+    font-size: 26px;
+    font-weight: 400;
+    color: var(--text-bright);
+    letter-spacing: -0.02em;
+  }
+
+  header h1 span {
+    color: var(--ice);
+    font-style: italic;
+  }
+
+  header .tag {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-dim);
+    background: var(--surface2);
+    padding: 3px 8px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+
+  .status-bar {
+    margin-left: auto;
+    display: flex;
+    gap: 16px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .status-bar .dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--success);
+    margin-right: 6px;
+    vertical-align: middle;
+    animation: pulse 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── Main Layout ───────────────────────── */
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    grid-template-rows: 1fr auto;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ───────────────────────────── */
+  .sidebar {
+    grid-row: 1 / 3;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    overflow-y: auto;
+    padding: 16px 0;
+  }
+
+  .sidebar h3 {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    padding: 8px 16px 6px;
+    font-weight: 500;
+  }
+
+  .sidebar .table-item {
+    padding: 6px 16px 6px 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.15s;
+    color: var(--text);
+    font-size: 12px;
+  }
+
+  .sidebar .table-item:hover { background: var(--surface2); }
+  .sidebar .table-item .icon { color: var(--ice-dim); font-size: 11px; }
+
+  .sidebar .column-item {
+    padding: 3px 16px 3px 44px;
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    gap: 6px;
+  }
+
+  .sidebar .column-item .type {
+    color: var(--accent-dim);
+    font-size: 10px;
+  }
+
+  .sidebar .empty-msg {
+    padding: 20px 16px;
+    color: var(--text-dim);
+    font-size: 11px;
+    font-style: italic;
+  }
+
+  .sidebar .example-section {
+    border-top: 1px solid var(--border);
+    margin-top: 12px;
+    padding-top: 4px;
+  }
+
+  .sidebar .example-item {
+    padding: 5px 16px 5px 24px;
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--text-dim);
+    transition: all 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sidebar .example-item:hover {
+    background: var(--surface2);
+    color: var(--ice);
+  }
+
+  /* ── Output ────────────────────────────── */
+  .output-area {
+    overflow-y: auto;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .output-entry {
+    border-bottom: 1px solid var(--border);
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .output-entry .sql-echo {
+    padding: 10px 20px 6px;
+    font-size: 12px;
+    color: var(--ice);
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .output-entry .sql-echo .prompt { color: var(--text-dim); }
+  .output-entry .sql-echo .timing {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+
+  .output-entry .result-table-wrap {
+    padding: 0 20px 12px;
+    overflow-x: auto;
+  }
+
+  .output-entry table {
+    border-collapse: collapse;
+    font-size: 12px;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .output-entry th {
+    text-align: left;
+    padding: 6px 12px;
+    border-bottom: 2px solid var(--border);
+    color: var(--text-dim);
+    font-weight: 500;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+
+  .output-entry td {
+    padding: 5px 12px;
+    border-bottom: 1px solid #1a1e2444;
+    white-space: nowrap;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .output-entry tr:hover td { background: var(--surface); }
+  .output-entry td.null-val { color: var(--text-dim); font-style: italic; }
+  .output-entry td.num-val { color: var(--warning); font-variant-numeric: tabular-nums; }
+  .output-entry td.bool-val { color: var(--accent); }
+
+  .output-entry .message {
+    padding: 6px 20px 12px;
+    font-size: 12px;
+  }
+
+  .output-entry .message.ok { color: var(--success); }
+  .output-entry .message.err { color: var(--error); }
+  .output-entry .message .row-count {
+    color: var(--text-dim);
+    font-size: 11px;
+  }
+
+  .welcome {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--text-dim);
+    padding: 40px;
+  }
+
+  .welcome .logo {
+    font-family: var(--font-serif);
+    font-size: 48px;
+    color: var(--ice);
+    font-style: italic;
+    opacity: 0.3;
+    letter-spacing: -0.03em;
+  }
+
+  .welcome p { font-size: 12px; text-align: center; max-width: 400px; line-height: 1.7; }
+  .welcome kbd {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+  }
+
+  /* ── Input ─────────────────────────────── */
+  .input-area {
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    padding: 12px 20px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+
+  .input-area .prompt-label {
+    color: var(--accent);
+    font-size: 13px;
+    padding: 7px 0;
+    flex-shrink: 0;
+    font-weight: 500;
+  }
+
+  .input-area textarea {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-bright);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 8px 12px;
+    resize: none;
+    outline: none;
+    line-height: 1.5;
+    min-height: 36px;
+    max-height: 200px;
+    transition: border-color 0.2s;
+  }
+
+  .input-area textarea:focus { border-color: var(--border-focus); }
+  .input-area textarea::placeholder { color: var(--text-dim); }
+
+  .input-area button {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .input-area button:hover { background: #5a8aff; }
+  .input-area button:active { transform: scale(0.97); }
+
+  /* ── Responsive ────────────────────────── */
+  @media (max-width: 700px) {
+    main { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ICE <span>db</span></h1>
+  <div class="tag">Phase 20 &bull; 53 gates &bull; in-memory</div>
+  <div class="status-bar">
+    <span><span class="dot"></span>Engine running</span>
+  </div>
+</header>
+
+<main>
+  <aside class="sidebar" id="sidebar">
+    <h3>Schema</h3>
+    <div id="schema-list"><div class="empty-msg">No tables yet</div></div>
+    <div class="example-section">
+      <h3>Quick Start</h3>
+      <div class="example-item" data-sql="CREATE TABLE users (id INTEGER NOT NULL, name TEXT, age INTEGER, dept TEXT DEFAULT 'general')">CREATE TABLE users …</div>
+      <div class="example-item" data-sql="INSERT INTO users (name, age, dept) VALUES ('Alice', 30, 'eng')">INSERT Alice</div>
+      <div class="example-item" data-sql="INSERT INTO users (name, age, dept) VALUES ('Bob', 25, 'sales')">INSERT Bob</div>
+      <div class="example-item" data-sql="INSERT INTO users (name, age, dept) VALUES ('Carol', 35, 'eng')">INSERT Carol</div>
+      <div class="example-item" data-sql="INSERT INTO users (name, age, dept) VALUES ('Dave', NULL, 'sales')">INSERT Dave (null age)</div>
+      <div class="example-item" data-sql="SELECT * FROM users">SELECT * FROM users</div>
+      <div class="example-item" data-sql="SELECT * FROM users WHERE age > 28 ORDER BY age DESC">WHERE … ORDER BY</div>
+      <div class="example-item" data-sql="SELECT dept, COUNT(*) AS cnt, AVG(age) AS avg_age FROM users GROUP BY dept">GROUP BY + aggregates</div>
+    </div>
+    <div class="example-section">
+      <h3>Advanced</h3>
+      <div class="example-item" data-sql="SELECT DISTINCT dept FROM users ORDER BY dept">DISTINCT</div>
+      <div class="example-item" data-sql="SELECT * FROM users ORDER BY age ASC NULLS LAST">NULLS LAST</div>
+      <div class="example-item" data-sql="INSERT INTO users (name, age, dept) VALUES ('Eve', 20 + 8, UPPER('eng'))">INSERT with expressions</div>
+      <div class="example-item" data-sql="SELECT name, CASE WHEN age > 30 THEN 'senior' WHEN age > 25 THEN 'mid' ELSE 'junior' END AS level FROM users WHERE age IS NOT NULL">CASE WHEN</div>
+      <div class="example-item" data-sql="SELECT name, age, SUM(age) OVER (ORDER BY age) AS running FROM users WHERE age IS NOT NULL">Window function</div>
+      <div class="example-item" data-sql="SELECT * FROM users WHERE age > (SELECT AVG(age) FROM users WHERE age IS NOT NULL)">Subquery</div>
+      <div class="example-item" data-sql="WITH RECURSIVE cnt(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM cnt WHERE x < 10) SELECT x FROM cnt">Recursive CTE</div>
+      <div class="example-item" data-sql="UPDATE users SET age = 31 WHERE name = 'Alice'">UPDATE</div>
+      <div class="example-item" data-sql="DELETE FROM users WHERE name = 'Bob'">DELETE</div>
+      <div class="example-item" data-sql="CREATE INDEX idx_dept ON users(dept)">CREATE INDEX</div>
+      <div class="example-item" data-sql="BEGIN">BEGIN transaction</div>
+      <div class="example-item" data-sql="ROLLBACK">ROLLBACK</div>
+    </div>
+  </aside>
+
+  <div class="output-area" id="output">
+    <div class="welcome">
+      <div class="logo">ICE</div>
+      <p>Event-driven database engine.<br>
+      Stateless gates. Content-addressed storage. Pure transforms.<br><br>
+      Type SQL below or click an example.<br>
+      <kbd>Enter</kbd> to execute, <kbd>Shift+Enter</kbd> for newline, <kbd>↑</kbd><kbd>↓</kbd> for history.</p>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <span class="prompt-label">sql&gt;</span>
+    <textarea id="input" rows="1" placeholder="SELECT * FROM ..." autofocus></textarea>
+    <button id="run-btn" onclick="executeSql()">Run</button>
+  </div>
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// ICE Phase 20 — Browser Bundle
+// ═══════════════════════════════════════════════════════════
+const ICE = (function() {
+
+  // Browser-compatible hash (FNV-based, deterministic)
+  function createHashSync(str) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 0x01000193);
+    }
+    const p1 = (h >>> 0).toString(16).padStart(8, '0');
+    let h2 = 0x6c62272e;
+    for (let i = 0; i < str.length; i++) {
+      h2 ^= str.charCodeAt(i);
+      h2 = Math.imul(h2, 0x01000193);
+    }
+    const p2 = (h2 >>> 0).toString(16).padStart(8, '0');
+    let h3 = 0x2b2ae35;
+    for (let i = str.length - 1; i >= 0; i--) {
+      h3 ^= str.charCodeAt(i);
+      h3 = Math.imul(h3, 0x01000193);
+    }
+    const p3 = (h3 >>> 0).toString(16).padStart(8, '0');
+    let h4 = 0xfcb5c589;
+    for (let i = 0; i < str.length; i++) {
+      h4 = ((h4 << 5) + h4 + str.charCodeAt(i)) | 0;
+    }
+    const p4 = (h4 >>> 0).toString(16).padStart(8, '0');
+    let h5 = 0xa93edab;
+    for (let i = 0; i < str.length; i++) {
+      h5 = ((h5 >>> 3) ^ (h5 << 7) ^ str.charCodeAt(i)) | 0;
+    }
+    const p5 = (h5 >>> 0).toString(16).padStart(8, '0');
+    let h6 = 0x12fade34;
+    for (let i = 0; i < str.length; i++) {
+      h6 ^= str.charCodeAt(i) * (i + 1);
+      h6 = (h6 << 3) | (h6 >>> 29);
+    }
+    const p6 = (h6 >>> 0).toString(16).padStart(8, '0');
+    let h7 = 0xdeadbeef;
+    for (let i = 0; i < str.length; i++) {
+      h7 += str.charCodeAt(i);
+      h7 = Math.imul(h7, 2654435761);
+    }
+    const p7 = (h7 >>> 0).toString(16).padStart(8, '0');
+    let h8 = 0xcafebabe;
+    for (let i = 0; i < str.length; i++) {
+      h8 = (h8 * 31 + str.charCodeAt(i)) | 0;
+    }
+    const p8 = (h8 >>> 0).toString(16).padStart(8, '0');
+    return p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8;
+  }
+
+  // Shim Node's createHash API using browser-compatible hash
+  function createHash(algo) {
+    let data = '';
+    return {
+      update(str) { data = str; return this; },
+      digest(enc) { return createHashSync(data); }
+    };
+  }
+
+
+// ═══ src/core/Event.js ═══
+/**
+ * Event — a datum flowing through the stream.
+ * Has a type (its signature) and arbitrary data.
+ * This is E.
+ */
+class Event {
+  constructor(type, data = {}) {
+    this.type = type;
+    this.data = data;
+  }
+}
+
+
+// ═══ src/core/Gate.js ═══
+/**
+ * Gate — a shape that recognizes one type of event
+ * and transforms it into another.
+ *
+ * The signature is a unique key. No two gates in a
+ * stream may share one. The stream uses it for
+ * direct lookup — O(1), no scanning.
+ *
+ * This is the shape of the arrow in →E→E→.
+ */
+class Gate {
+  constructor(signature) {
+    this.signature = signature;
+  }
+
+  /**
+   * Transform the event. May call stream.emit()
+   * zero or more times. The original event is consumed.
+   */
+  transform(event, stream) {
+    // Override in subclass.
+  }
+}
+
+
+// ═══ src/core/StreamLog.js ═══
+/**
+ * StreamLog — the audit trail.
+ *
+ * A shared object that streams write to. One log sees
+ * every event across a stream and its sub-streams.
+ * Not a gate. Not a primitive. Self-observation by
+ * the infrastructure that already makes the decisions.
+ *
+ * Levels (each includes everything below):
+ *   OFF    — nothing
+ *   EVENTS — sequence, timestamp, type, claimed/pending
+ *   DEEP   — sub-streams participate with parent/child IDs
+ *   DATA   — includes event payloads
+ *
+ * Level is mutable at runtime. Change it and the next
+ * emit() respects it immediately.
+ */
+
+const LEVELS = { OFF: 0, EVENTS: 1, DEEP: 2, DATA: 3 };
+
+let streamIdCounter = 0;
+
+class StreamLog {
+  constructor(level = 'EVENTS') {
+    this.level = level;
+    this.entries = [];
+    this.seq = 0;
+  }
+
+  /**
+   * Called by Stream.emit(). The stream passes what it
+   * already knows — no extra work unless logging is on.
+   */
+  record({ streamId, parentStreamId, eventType, gateClaimed, eventData }) {
+    const lvl = LEVELS[this.level] || 0;
+    if (lvl === 0) return;
+
+    const entry = {
+      seq: this.seq++,
+      time: Date.now(),
+      type: eventType,
+      claimed: gateClaimed,
+    };
+
+    // DEEP — include stream lineage
+    if (lvl >= 2) {
+      entry.streamId = streamId;
+      if (parentStreamId != null) {
+        entry.parentStreamId = parentStreamId;
+      }
+    }
+
+    // DATA — include payload
+    if (lvl >= 3) {
+      entry.data = eventData;
+    }
+
+    this.entries.push(entry);
+  }
+
+  /**
+   * Generate a unique stream ID. Called by Stream
+   * on construction when a log is present.
+   */
+  nextStreamId() {
+    return ++streamIdCounter;
+  }
+
+  /**
+   * Read the full log. Same philosophy as sampleHere —
+   * observation, not consumption.
+   */
+  sample() {
+    return {
+      level: this.level,
+      count: this.entries.length,
+      entries: [...this.entries],
+    };
+  }
+
+  /**
+   * Clear the log. The one concession to mutability —
+   * for long-running systems that need to shed history.
+   */
+  clear() {
+    this.entries = [];
+    this.seq = 0;
+  }
+}
+
+
+// ═══ src/core/Stream.js ═══
+/**
+ * Stream — the processing loop.
+ *
+ * Gates register by signature. Events arrive via emit().
+ * The stream looks up the event's type in the gate table.
+ * If a gate claims it, transform runs immediately (depth-first).
+ * If nothing claims it, the event lands in pending.
+ *
+ * Pending events are the residue — what's left when
+ * processing settles. sampleHere() reads them.
+ *
+ * If a StreamLog is provided, emit() records every decision.
+ * The log is shared — sub-streams write to the same one,
+ * giving full visibility across the tree.
+ *
+ * This is →E→E→.
+ */
+class Stream {
+  constructor({ log = null, parentStreamId = null } = {}) {
+    this.gates = new Map();
+    this.pending = [];
+    this.eventCount = 0;
+    this.log = log;
+    this.streamId = log ? log.nextStreamId() : null;
+    this.parentStreamId = parentStreamId;
+  }
+
+  /**
+   * Register a gate. Signature must be unique.
+   * Collision is a hard error, not a silent precedence bug.
+   */
+  register(gate) {
+    if (this.gates.has(gate.signature)) {
+      throw new Error(`Signature collision: '${gate.signature}'`);
+    }
+    this.gates.set(gate.signature, gate);
+  }
+
+  /**
+   * Emit an event into the stream.
+   * Processed immediately, depth-first.
+   * If no gate claims it, it lands in pending.
+   */
+  emit(event) {
+    this.eventCount++;
+    const gate = this.gates.get(event.type);
+
+    if (this.log) {
+      this.log.record({
+        streamId: this.streamId,
+        parentStreamId: this.parentStreamId,
+        eventType: event.type,
+        gateClaimed: gate ? gate.signature : null,
+        eventData: event.data,
+      });
+    }
+
+    if (gate) {
+      gate.transform(event, this);
+    } else {
+      this.pending.push(event);
+    }
+  }
+
+  /**
+   * Not getResult. The flow is ongoing.
+   * We choose to look now. What we read
+   * is a cross-section of →E→E→.
+   */
+  sampleHere() {
+    return {
+      pending: [...this.pending],
+      eventCount: this.eventCount,
+      gateCount: this.gates.size,
+    };
+  }
+}
+
+
+// ═══ src/persistence/canonicalize.js ═══
+/**
+ * canonicalize — deterministic JSON serialization.
+ *
+ * Same content always produces the same string.
+ * Object keys are sorted recursively. Arrays preserve order.
+ * Used by Store.put() to ensure identical content
+ * produces identical hashes.
+ */
+function canonicalize(value) {
+  if (value === null || value === undefined) return 'null';
+  if (typeof value === 'boolean') return value.toString();
+  if (typeof value === 'number') return JSON.stringify(value);
+  if (typeof value === 'string') return JSON.stringify(value);
+
+  if (Array.isArray(value)) {
+    const items = value.map(v => canonicalize(v));
+    return '[' + items.join(',') + ']';
+  }
+
+  if (typeof value === 'object') {
+    const keys = Object.keys(value).sort();
+    const pairs = keys
+      .filter(k => value[k] !== undefined)
+      .map(k => JSON.stringify(k) + ':' + canonicalize(value[k]));
+    return '{' + pairs.join(',') + '}';
+  }
+
+  throw new Error(`Cannot canonicalize type: ${typeof value}`);
+}
+
+
+// ═══ src/persistence/Store.js ═══
+/**
+ * MemoryStore — content-addressable object store.
+ *
+ * put(content) → hash
+ * get(hash) → content
+ * has(hash) → boolean
+ *
+ * Content is serialized to canonical JSON, hashed with SHA-256.
+ * Same content always returns the same hash (deduplication).
+ * Objects are immutable once stored — get() returns a clone.
+ * The store doesn't know what it's holding. A row, a schema,
+ * a wiki page, a git blob — all the same.
+ */
+
+class MemoryStore {
+  constructor() {
+    this.objects = new Map(); // hash → canonical JSON string
+  }
+
+  /**
+   * Store content, return its hash.
+   * If the content already exists, no-op — returns same hash.
+   */
+  put(content) {
+    const canonical = canonicalize(content);
+    const hash = createHash('sha256').update(canonical).digest('hex');
+    if (!this.objects.has(hash)) {
+      this.objects.set(hash, canonical);
+    }
+    return hash;
+  }
+
+  /**
+   * Retrieve content by hash.
+   * Returns a deep clone — caller can't mutate stored data.
+   * Throws if hash not found.
+   */
+  get(hash) {
+    const canonical = this.objects.get(hash);
+    if (canonical === undefined) {
+      throw new Error(`Object not found: ${hash}`);
+    }
+    return JSON.parse(canonical);
+  }
+
+  /**
+   * Check existence without deserializing.
+   */
+  has(hash) {
+    return this.objects.has(hash);
+  }
+}
+
+
+// ═══ src/persistence/Refs.js ═══
+/**
+ * MemoryRefs — named references to store hashes.
+ *
+ * set(name, hash)
+ * get(name) → hash | null
+ * delete(name)
+ * list(prefix) → [names]
+ *
+ * A flat map of strings to strings. The ref layer doesn't
+ * know what the hashes point to. It doesn't validate that
+ * a hash exists in the store. That's the caller's concern.
+ */
+class MemoryRefs {
+  constructor() {
+    this.names = new Map(); // name → hash
+  }
+
+  /**
+   * Point a name at a hash. Creates or overwrites.
+   */
+  set(name, hash) {
+    this.names.set(name, hash);
+  }
+
+  /**
+   * Look up a name. Returns the hash, or null if not found.
+   * Null, not throw — absence is normal for refs.
+   */
+  get(name) {
+    return this.names.get(name) ?? null;
+  }
+
+  /**
+   * Remove a name. No-op if it doesn't exist.
+   */
+  delete(name) {
+    this.names.delete(name);
+  }
+
+  /**
+   * List all names starting with prefix, sorted.
+   * Empty prefix returns all names.
+   */
+  list(prefix) {
+    const matches = [];
+    for (const key of this.names.keys()) {
+      if (key.startsWith(prefix)) {
+        matches.push(key);
+      }
+    }
+    return matches.sort();
+  }
+}
+
+
+// ═══ src/protocol/ReadSet.js ═══
+/**
+ * ReadSet — declares what state a gate needs.
+ *
+ * A list of specific ref names and prefix patterns.
+ * The resolution layer (Phase 3) resolves these against
+ * persistence before calling the gate's transform.
+ *
+ * Builder pattern — chain .ref() and .pattern() calls.
+ * The gate constructs this in reads(event). It never
+ * touches persistence itself.
+ */
+class ReadSet {
+  constructor() {
+    this.refs = [];      // specific ref names to resolve
+    this.patterns = [];  // prefix patterns to list and resolve
+  }
+
+  /**
+   * Add a specific ref name to resolve.
+   * e.g. "db/tables/users/schema"
+   */
+  ref(name) {
+    this.refs.push(name);
+    return this;
+  }
+
+  /**
+   * Add a prefix pattern. The resolution layer will list
+   * all refs matching this prefix and resolve each.
+   * e.g. "db/tables/users/rows/"
+   */
+  pattern(prefix) {
+    this.patterns.push(prefix);
+    return this;
+  }
+}
+
+
+// ═══ src/protocol/MutationBatch.js ═══
+/**
+ * MutationBatch — describes what should change in persistence.
+ *
+ * A list of operations: puts, refSets, refDeletes, and
+ * follow-up events. This is data, not execution. The
+ * resolution layer (Phase 3) applies it atomically.
+ *
+ * Builder pattern — chain .put(), .refSet(), .refDelete(),
+ * .emit() calls. The gate constructs this in transform().
+ * It never calls store.put() or refs.set() directly.
+ *
+ * refSet() takes an index into the puts array. This avoids
+ * the gate needing to compute hashes — the resolution layer
+ * hashes the puts and resolves the indices.
+ */
+class MutationBatch {
+  constructor() {
+    this.puts = [];       // { type, content } objects to store
+    this.refSets = [];    // { name, putIndex?, hash? } refs to set
+    this.refDeletes = []; // ref names to delete
+    this.events = [];     // events to emit after mutations apply
+  }
+
+  /**
+   * Add an object to store. Returns this for chaining.
+   * The type is metadata for the caller — the store doesn't use it.
+   */
+  put(type, content) {
+    this.puts.push({ type, content });
+    return this;
+  }
+
+  /**
+   * Set a ref to point at a put's hash (by index into puts array).
+   * The resolution layer resolves the index after hashing the puts.
+   */
+  refSet(name, putIndex) {
+    if (putIndex >= this.puts.length) {
+      throw new Error(
+        `refSet index ${putIndex} out of range (${this.puts.length} puts)`
+      );
+    }
+    this.refSets.push({ name, putIndex });
+    return this;
+  }
+
+  /**
+   * Set a ref to a known hash directly.
+   * Used when pointing to an object that already exists in the store.
+   */
+  refSetHash(name, hash) {
+    this.refSets.push({ name, hash });
+    return this;
+  }
+
+  /**
+   * Delete a ref by name.
+   */
+  refDelete(name) {
+    this.refDeletes.push(name);
+    return this;
+  }
+
+  /**
+   * Add a follow-up event to emit after mutations are applied.
+   */
+  emit(event) {
+    this.events.push(event);
+    return this;
+  }
+}
+
+
+// ═══ src/protocol/PureGate.js ═══
+/**
+ * PureGate — event in, event out.
+ *
+ * No state access. No side effects. A pure function of its input.
+ * Parse gates, filter gates, projection gates — all PureGates.
+ *
+ * transform(event) → Event | null
+ *   - Returns an Event to continue processing
+ *   - Returns null to consume the event and emit nothing
+ *
+ * Extends Gate so the Stream can register it.
+ * The resolution layer (Phase 3) recognizes PureGate and
+ * calls transform(event) without state resolution.
+ */
+
+class PureGate extends Gate {
+  constructor(signature) {
+    super(signature);
+  }
+
+  /**
+   * Transform the event. Override in subclass.
+   * Returns an Event or null. No stream reference.
+   */
+  transform(event) {
+    return null;
+  }
+}
+
+
+// ═══ src/protocol/StateGate.js ═══
+/**
+ * StateGate — event + resolved state in, MutationBatch out.
+ *
+ * Declares what state it needs via reads(event) → ReadSet.
+ * Receives resolved state in transform(event, state) → MutationBatch.
+ * Never touches persistence directly. Pure function of its inputs.
+ *
+ * Execute gates — insert, update, delete, create table — are StateGates.
+ *
+ * Extends Gate so the Stream can register it.
+ * The resolution layer (Phase 3) recognizes StateGate, resolves
+ * the ReadSet, calls transform with the resolved state, and
+ * applies the returned MutationBatch.
+ */
+
+class StateGate extends Gate {
+  constructor(signature) {
+    super(signature);
+  }
+
+  /**
+   * Declare what state this gate needs to read.
+   * Examines the event to determine refs and patterns.
+   * Pure function of the event. Override in subclass.
+   */
+  reads(event) {
+    return new ReadSet();
+  }
+
+  /**
+   * Transform the event given resolved state.
+   * Returns a MutationBatch describing all mutations
+   * and follow-up events. Override in subclass.
+   */
+  transform(event, state) {
+    return new MutationBatch();
+  }
+}
+
+
+// ═══ src/resolution/Runner.js ═══
+/**
+ * Runner — the resolution layer.
+ *
+ * The impure shell. Owns a Stream, a Store, and a Refs.
+ * The only thing in the system that touches all three.
+ *
+ * When a PureGate is registered, the Runner wraps it:
+ *   event → gate.transform(event) → emit result
+ *
+ * When a StateGate is registered, the Runner wraps it:
+ *   event → gate.reads(event) → resolve against persistence
+ *   → gate.transform(event, state) → apply mutations → emit follow-ups
+ *
+ * The Stream is unchanged. It sees plain Gates with transform().
+ * The gates are unchanged. They see plain events and state objects.
+ * The Runner is the quarantine boundary between purity and the world.
+ */
+
+class Runner {
+  constructor({ store, refs, log = null }) {
+    this.store = store;
+    this.refs = refs;
+    this.log = log;
+    this.stream = new Stream({ log });
+  }
+
+  /**
+   * Register a gate. Wraps it in a resolution shell so the
+   * Stream sees a plain Gate. The wrapper dispatches based on
+   * whether the gate is a PureGate or StateGate.
+   */
+  register(gate) {
+    const runner = this;
+    const wrapper = new Gate(gate.signature);
+
+    if (gate instanceof StateGate) {
+      wrapper.transform = function (event, stream) {
+        try {
+          const readSet = gate.reads(event);
+          const state = runner.resolve(readSet);
+          const batch = gate.transform(event, state);
+          runner.apply(batch, stream);
+        } catch (err) {
+          stream.emit(new Event('error', {
+            message: err.message,
+            source: gate.signature,
+          }));
+        }
+      };
+    } else if (gate instanceof PureGate) {
+      wrapper.transform = function (event, stream) {
+        try {
+          const result = gate.transform(event);
+          if (Array.isArray(result)) {
+            for (const r of result) stream.emit(r);
+          } else if (result) {
+            stream.emit(result);
+          }
+        } catch (err) {
+          stream.emit(new Event('error', {
+            message: err.message,
+            source: gate.signature,
+          }));
+        }
+      };
+    } else {
+      // Plain Gate — register as-is (backward compatible)
+      this.stream.register(gate);
+      return;
+    }
+
+    this.stream.register(wrapper);
+  }
+
+  /**
+   * Emit an event into the stream.
+   * Depth-first processing, same as always.
+   */
+  emit(event) {
+    this.stream.emit(event);
+  }
+
+  /**
+   * Observe the current state of the stream.
+   * Same philosophy as Stream.sampleHere().
+   */
+  sample() {
+    return this.stream.sampleHere();
+  }
+
+  /**
+   * Resolve a ReadSet against persistence.
+   * Returns a plain state object the gate can read from.
+   *
+   * This is the only place that calls store.get() and refs.get()
+   * for gate reads. All reads are quarantined here.
+   */
+  resolve(readSet) {
+    const state = { refs: {}, patterns: {} };
+
+    // Resolve specific refs
+    for (const name of readSet.refs) {
+      const hash = this.refs.get(name);
+      if (hash === null) {
+        state.refs[name] = null;
+      } else {
+        state.refs[name] = this.store.get(hash);
+      }
+    }
+
+    // Resolve prefix patterns
+    for (const pattern of readSet.patterns) {
+      state.patterns[pattern] = {};
+      const names = this.refs.list(pattern);
+      for (const name of names) {
+        const hash = this.refs.get(name);
+        state.patterns[pattern][name] = this.store.get(hash);
+      }
+    }
+
+    return state;
+  }
+
+  /**
+   * Apply a MutationBatch to persistence.
+   * Puts first (safe, idempotent), then ref operations, then events.
+   *
+   * This is the only place that calls store.put() and refs.set()
+   * for gate writes. All writes are quarantined here.
+   */
+  apply(batch, stream) {
+    // 1. Store all puts, collect hashes
+    const hashes = [];
+    for (const put of batch.puts) {
+      const hash = this.store.put(put.content);
+      hashes.push(hash);
+    }
+
+    // 2. Apply ref sets
+    for (const refSet of batch.refSets) {
+      const hash = refSet.putIndex !== undefined
+        ? hashes[refSet.putIndex]
+        : refSet.hash;
+      this.refs.set(refSet.name, hash);
+    }
+
+    // 3. Apply ref deletes
+    for (const name of batch.refDeletes) {
+      this.refs.delete(name);
+    }
+
+    // 4. Emit follow-up events (continues depth-first)
+    for (const event of batch.events) {
+      stream.emit(event);
+    }
+  }
+
+  /**
+   * Deep copy of current persistence state.
+   * For testing and debugging.
+   */
+  snapshot() {
+    const storeSnapshot = new Map();
+    for (const [hash, canonical] of this.store.objects) {
+      storeSnapshot.set(hash, canonical);
+    }
+
+    const refsSnapshot = new Map();
+    for (const [name, hash] of this.refs.names) {
+      refsSnapshot.set(name, hash);
+    }
+
+    return { store: storeSnapshot, refs: refsSnapshot };
+  }
+
+  /**
+   * Restore persistence state from a snapshot.
+   * For rollback testing.
+   */
+  restore(snapshot) {
+    this.store.objects.clear();
+    for (const [hash, canonical] of snapshot.store) {
+      this.store.objects.set(hash, canonical);
+    }
+
+    this.refs.names.clear();
+    for (const [name, hash] of snapshot.refs) {
+      this.refs.names.set(name, hash);
+    }
+  }
+
+  /** Clear pending events (for REPL use). */
+  clearPending() {
+    this.stream.pending = [];
+  }
+}
+
+
+// ═══ src/gates/database/expression.js ═══
+/**
+ * Expression evaluator for database gates.
+ *
+ * Evaluates conditions and expressions against row data.
+ * Used by FilterGate, ProjectionGate, UpdateExecuteGate.
+ * Pure functions — no state access, no side effects.
+ */
+
+/**
+ * Evaluate a where condition against a row.
+ * Returns true/false.
+ *
+ * Condition shapes:
+ *   { column, op, value }           — comparison
+ *   { and: [conditions] }           — logical AND
+ *   { or: [conditions] }            — logical OR
+ *   { not: condition }              — logical NOT
+ *   { column, op: "in", value: [] } — IN list
+ *   { column, op: "like", value }   — LIKE pattern
+ *   { column, op: "is_null" }       — IS NULL
+ *   { column, op: "is_not_null" }   — IS NOT NULL
+ */
+function evaluateCondition(condition, row) {
+  if (!condition) return true;
+
+  // Logical operators
+  if (condition.and) {
+    return condition.and.every(c => evaluateCondition(c, row));
+  }
+  if (condition.or) {
+    return condition.or.some(c => evaluateCondition(c, row));
+  }
+  if (condition.not) {
+    return !evaluateCondition(condition.not, row);
+  }
+  if (condition.exists !== undefined) {
+    // exists is pre-resolved to a boolean by QueryPlanGate
+    return !!condition.resolved;
+  }
+
+  // Expression-based comparison: {leftExpr, op, rightExpr}
+  if (condition.leftExpr !== undefined) {
+    const val = evaluateExpression(condition.leftExpr, row);
+    const op = condition.op;
+
+    if (op === 'is_null') return val === null || val === undefined;
+    if (op === 'is_not_null') return val !== null && val !== undefined;
+    if (op === 'in') {
+      const target = condition.value || [];
+      return Array.isArray(target) && target.includes(val);
+    }
+    if (op === 'like') return matchLike(val, condition.value || '', false);
+    if (op === 'ilike') return matchLike(val, condition.value || '', true);
+
+    const right = condition.rightExpr !== undefined ? evaluateExpression(condition.rightExpr, row) : null;
+    switch (op) {
+      case '=': case '==': return val === right;
+      case '!=': case '<>': return val !== right;
+      case '<': return val < right;
+      case '>': return val > right;
+      case '<=': return val <= right;
+      case '>=': return val >= right;
+      default: return false;
+    }
+  }
+
+  // Classic column-based comparison: {column, op, value}
+  const colName = condition.column;
+  let val = row[colName];
+  // alias.column fallback
+  if (val === undefined && colName && colName.indexOf('.') !== -1) {
+    const shortCol = colName.substring(colName.indexOf('.') + 1);
+    val = row[shortCol];
+  }
+  const target = condition.value;
+
+  switch (condition.op) {
+    case '=':
+    case '==':
+      return val === target;
+    case '!=':
+    case '<>':
+      return val !== target;
+    case '<':
+      return val < target;
+    case '>':
+      return val > target;
+    case '<=':
+      return val <= target;
+    case '>=':
+      return val >= target;
+    case 'in':
+      return Array.isArray(target) && target.includes(val);
+    case 'like':
+      return matchLike(val, target, false);
+    case 'ilike':
+      return matchLike(val, target, true);
+    case 'is_null':
+      return val === null || val === undefined;
+    case 'is_not_null':
+      return val !== null && val !== undefined;
+    default:
+      return false;
+  }
+}
+
+/**
+ * Evaluate an expression against a row.
+ * Returns a value.
+ *
+ * Expression shapes:
+ *   "column_name"                        — column reference (string)
+ *   { literal: value }                   — literal value
+ *   { op, left, right }                  — arithmetic/comparison
+ *   { fn, args }                         — function call
+ *   { case: [{ when, then }], else }     — CASE WHEN
+ *   { coalesce: [exprs] }               — COALESCE
+ */
+function evaluateExpression(expr, row) {
+  // String → column reference
+  if (typeof expr === 'string') {
+    if (expr in row) return row[expr];
+    // alias.column fallback
+    const dot = expr.indexOf('.');
+    if (dot !== -1) {
+      const col = expr.substring(dot + 1);
+      if (col in row) return row[col];
+    }
+    return undefined;
+  }
+
+  // Number/boolean/null → literal
+  if (typeof expr === 'number' || typeof expr === 'boolean' || expr === null) {
+    return expr;
+  }
+
+  // Literal wrapper
+  if (expr.literal !== undefined) {
+    return expr.literal;
+  }
+
+  // Pre-resolved scalar subquery
+  if (expr.subquery && 'resolved' in expr) {
+    return expr.resolved;
+  }
+
+  // Arithmetic / comparison
+  if (expr.op && expr.left !== undefined && expr.right !== undefined) {
+    const left = evaluateExpression(expr.left, row);
+    const right = evaluateExpression(expr.right, row);
+    switch (expr.op) {
+      case '+': return left + right;
+      case '-': return left - right;
+      case '*': return left * right;
+      case '/': return right !== 0 ? left / right : null;
+      case '%': return right !== 0 ? left % right : null;
+      default: return null;
+    }
+  }
+
+  // Function calls
+  if (expr.fn) {
+    const fnUpper = expr.fn.toUpperCase();
+    // For aggregate functions, check if pre-computed in row (HAVING support)
+    const aggFns = ['SUM', 'COUNT', 'AVG', 'MIN', 'MAX', 'GROUP_CONCAT'];
+    if (aggFns.includes(fnUpper)) {
+      const argStr = expr.args && expr.args[0] ? (typeof expr.args[0] === 'string' ? expr.args[0] : '*') : '*';
+      const synKey = `${fnUpper}(${argStr})`;
+      if (synKey in row) return row[synKey];
+    }
+    const args = (expr.args || []).map(a => evaluateExpression(a, row));
+    const fn = expr.fn.toUpperCase();
+    const s0 = typeof args[0] === 'string' ? args[0] : null;
+    const n0 = typeof args[0] === 'number' ? args[0] : null;
+    switch (fn) {
+      // String functions
+      case 'UPPER': return s0 !== null ? s0.toUpperCase() : null;
+      case 'LOWER': return s0 !== null ? s0.toLowerCase() : null;
+      case 'LENGTH':
+      case 'CHAR_LENGTH':
+      case 'CHARACTER_LENGTH': return s0 !== null ? s0.length : null;
+      case 'CONCAT': return args.map(a => a ?? '').join('');
+      case 'SUBSTR':
+      case 'SUBSTRING': return s0 !== null
+        ? s0.substring((args[1] || 1) - 1, args[2] !== undefined ? (args[1] || 1) - 1 + args[2] : undefined)
+        : null;
+      case 'REPLACE': return s0 !== null && typeof args[1] === 'string'
+        ? s0.split(args[1]).join(args[2] ?? '')
+        : null;
+      case 'TRIM': return s0 !== null ? s0.trim() : null;
+      case 'LTRIM': return s0 !== null ? s0.trimStart() : null;
+      case 'RTRIM': return s0 !== null ? s0.trimEnd() : null;
+      case 'LEFT': return s0 !== null && typeof args[1] === 'number'
+        ? s0.substring(0, args[1]) : null;
+      case 'RIGHT': return s0 !== null && typeof args[1] === 'number'
+        ? s0.substring(s0.length - args[1]) : null;
+      case 'REVERSE': return s0 !== null ? s0.split('').reverse().join('') : null;
+      case 'REPEAT': return s0 !== null && typeof args[1] === 'number'
+        ? s0.repeat(Math.max(0, args[1])) : null;
+      case 'LPAD': return s0 !== null && typeof args[1] === 'number'
+        ? s0.padStart(args[1], args[2] ?? ' ') : null;
+      case 'RPAD': return s0 !== null && typeof args[1] === 'number'
+        ? s0.padEnd(args[1], args[2] ?? ' ') : null;
+      case 'POSITION':
+      case 'INSTR': return s0 !== null && typeof args[1] === 'string'
+        ? (s0.indexOf(args[1]) + 1) : 0;
+      case 'STARTS_WITH': return s0 !== null && typeof args[1] === 'string'
+        ? (s0.startsWith(args[1]) ? 1 : 0) : 0;
+      case 'ENDS_WITH': return s0 !== null && typeof args[1] === 'string'
+        ? (s0.endsWith(args[1]) ? 1 : 0) : 0;
+
+      // Math functions
+      case 'ABS': return n0 !== null ? Math.abs(n0) : null;
+      case 'ROUND': return n0 !== null
+        ? (args[1] !== undefined ? parseFloat(n0.toFixed(args[1])) : Math.round(n0))
+        : null;
+      case 'CEIL':
+      case 'CEILING': return n0 !== null ? Math.ceil(n0) : null;
+      case 'FLOOR': return n0 !== null ? Math.floor(n0) : null;
+      case 'POWER':
+      case 'POW': return n0 !== null && typeof args[1] === 'number'
+        ? Math.pow(n0, args[1]) : null;
+      case 'SQRT': return n0 !== null && n0 >= 0 ? Math.sqrt(n0) : null;
+      case 'MOD': return n0 !== null && typeof args[1] === 'number' && args[1] !== 0
+        ? n0 % args[1] : null;
+      case 'SIGN': return n0 !== null ? Math.sign(n0) : null;
+      case 'LOG': return n0 !== null && n0 > 0
+        ? (args[1] !== undefined ? Math.log(n0) / Math.log(args[1]) : Math.log10(n0))
+        : null;
+      case 'LN': return n0 !== null && n0 > 0 ? Math.log(n0) : null;
+      case 'EXP': return n0 !== null ? Math.exp(n0) : null;
+      case 'PI': return Math.PI;
+      case 'RANDOM':
+      case 'RAND': return Math.random();
+
+      // Null/type functions
+      case 'IFNULL': return (args[0] !== null && args[0] !== undefined) ? args[0] : (args[1] ?? null);
+      case 'NULLIF': return args[0] === args[1] ? null : args[0];
+      case 'COALESCE': return args.find(a => a !== null && a !== undefined) ?? null;
+      case 'CAST': return castValue(args[0], args[1]);
+      case 'TYPEOF': {
+        const v = args[0];
+        if (v === null || v === undefined) return 'null';
+        if (typeof v === 'number') return Number.isInteger(v) ? 'integer' : 'real';
+        return 'text';
+      }
+      case 'GREATEST': {
+        const valid = args.filter(a => a !== null && a !== undefined);
+        return valid.length > 0 ? Math.max(...valid) : null;
+      }
+      case 'LEAST': {
+        const valid = args.filter(a => a !== null && a !== undefined);
+        return valid.length > 0 ? Math.min(...valid) : null;
+      }
+      case 'IIF':
+        return (args[0]) ? (args[1] ?? null) : (args[2] ?? null);
+      case 'IFNULL':
+        return (args[0] !== null && args[0] !== undefined) ? args[0] : (args[1] ?? null);
+      case 'DATE': {
+        const input = args[0] || 'now';
+        const d = input.toLowerCase() === 'now' ? new Date() : new Date(input);
+        return d.toISOString().slice(0, 10);
+      }
+      case 'TIME': {
+        const input = args[0] || 'now';
+        const d = input.toLowerCase() === 'now' ? new Date() : new Date(input);
+        return d.toISOString().slice(11, 19);
+      }
+      case 'DATETIME': {
+        const input = args[0] || 'now';
+        const d = input.toLowerCase() === 'now' ? new Date() : new Date(input);
+        return d.toISOString().slice(0, 19).replace('T', ' ');
+      }
+      case 'STRFTIME': {
+        const fmt = args[0] || '%Y-%m-%d';
+        const input = args[1] || 'now';
+        const d = input.toLowerCase() === 'now' ? new Date() : new Date(input);
+        const pad = n => String(n).padStart(2, '0');
+        return fmt.replace(/%Y/g, d.getUTCFullYear())
+          .replace(/%m/g, pad(d.getUTCMonth() + 1))
+          .replace(/%d/g, pad(d.getUTCDate()))
+          .replace(/%H/g, pad(d.getUTCHours()))
+          .replace(/%M/g, pad(d.getUTCMinutes()))
+          .replace(/%S/g, pad(d.getUTCSeconds()))
+          .replace(/%w/g, d.getUTCDay())
+          .replace(/%j/g, Math.floor((d - new Date(d.getUTCFullYear(), 0, 0)) / 86400000));
+      }
+      case 'NOW':
+      case 'CURRENT_TIMESTAMP':
+        return new Date().toISOString().slice(0, 19).replace('T', ' ');
+      case 'CURRENT_DATE':
+        return new Date().toISOString().slice(0, 10);
+      case 'CURRENT_TIME':
+        return new Date().toISOString().slice(11, 19);
+      default: return null;
+    }
+  }
+
+  // COALESCE shorthand
+  if (expr.coalesce) {
+    for (const e of expr.coalesce) {
+      const val = evaluateExpression(e, row);
+      if (val !== null && val !== undefined) return val;
+    }
+    return null;
+  }
+
+  // CASE WHEN
+  if (expr.case) {
+    for (const branch of expr.case) {
+      if (evaluateCondition(branch.when, row)) {
+        return evaluateExpression(branch.then, row);
+      }
+    }
+    return expr.else !== undefined ? evaluateExpression(expr.else, row) : null;
+  }
+
+  return null;
+}
+
+/**
+ * LIKE pattern matching.
+ * % matches any sequence of characters.
+ * _ matches any single character.
+ */
+function matchLike(value, pattern, caseInsensitive = false) {
+  if (value === null || value === undefined) return false;
+  if (typeof value !== 'string') value = String(value);
+  if (typeof pattern !== 'string') return false;
+
+  // Convert LIKE pattern to regex
+  let regex = '^';
+  for (const ch of pattern) {
+    if (ch === '%') regex += '.*';
+    else if (ch === '_') regex += '.';
+    else regex += ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+  regex += '$';
+  return new RegExp(regex, caseInsensitive ? 'i' : '').test(value);
+}
+
+function castValue(val, type) {
+  if (val === null || val === undefined) return null;
+  const t = (typeof type === 'string') ? type.toLowerCase() : 'text';
+  switch (t) {
+    case 'integer': case 'int': return parseInt(val, 10) || 0;
+    case 'real': case 'float': case 'double': return parseFloat(val) || 0;
+    case 'text': case 'string': case 'varchar': return String(val);
+    case 'boolean': case 'bool': return Boolean(val);
+    default: return val;
+  }
+}
+
+
+// ═══ src/gates/database/CreateTableExecuteGate.js ═══
+/**
+ * CreateTableExecuteGate — creates a table in the store.
+ * Stores schema and initializes row counter.
+ */
+
+class CreateTableExecuteGate extends StateGate {
+  constructor() { super('create_table_execute'); }
+
+  reads(event) {
+    return new ReadSet()
+      .ref(`db/tables/${event.data.table}/schema`);
+  }
+
+  transform(event, state) {
+    const { table, columns, ifNotExists } = event.data;
+    const existing = state.refs[`db/tables/${table}/schema`];
+
+    if (existing !== null) {
+      if (ifNotExists) {
+        return new MutationBatch()
+          .emit(new Event('table_exists', { table }));
+      }
+      return new MutationBatch()
+        .emit(new Event('error', { message: `Table '${table}' already exists`, source: 'create_table_execute' }));
+    }
+
+    const schema = { name: table, columns: columns || [] };
+
+    return new MutationBatch()
+      .put('schema', schema)
+      .refSet(`db/tables/${table}/schema`, 0)
+      .put('counter', '0')
+      .refSet(`db/tables/${table}/next_id`, 1)
+      .emit(new Event('table_created', { table }));
+  }
+}
+
+
+// ═══ src/gates/database/DropTableExecuteGate.js ═══
+/**
+ * DropTableExecuteGate — drops a table and all its rows, indexes.
+ */
+
+class DropTableExecuteGate extends StateGate {
+  constructor() { super('drop_table_execute'); }
+
+  reads(event) {
+    const table = event.data.table;
+    return new ReadSet()
+      .ref(`db/tables/${table}/schema`)
+      .pattern(`db/tables/${table}/rows/`)
+      .pattern(`db/tables/${table}/indexes/`);
+  }
+
+  transform(event, state) {
+    const { table, ifExists } = event.data;
+    const schema = state.refs[`db/tables/${table}/schema`];
+
+    if (schema === null) {
+      if (ifExists) {
+        return new MutationBatch();
+      }
+      return new MutationBatch()
+        .emit(new Event('error', { message: `Table '${table}' does not exist`, source: 'drop_table_execute' }));
+    }
+
+    const batch = new MutationBatch()
+      .refDelete(`db/tables/${table}/schema`)
+      .refDelete(`db/tables/${table}/next_id`);
+
+    // Delete all row refs
+    for (const name of Object.keys(state.patterns[`db/tables/${table}/rows/`])) {
+      batch.refDelete(name);
+    }
+
+    // Delete all index refs
+    for (const name of Object.keys(state.patterns[`db/tables/${table}/indexes/`])) {
+      batch.refDelete(name);
+    }
+
+    return batch.emit(new Event('table_dropped', { table }));
+  }
+}
+
+
+// ═══ src/gates/database/TableScanGate.js ═══
+/**
+ * TableScanGate — reads all rows from a table.
+ * StateGate: reads row refs, returns rows as event.
+ */
+
+class TableScanGate extends StateGate {
+  constructor() { super('table_scan'); }
+
+  reads(event) {
+    return new ReadSet()
+      .pattern(`db/tables/${event.data.table}/rows/`);
+  }
+
+  transform(event, state) {
+    const rows = Object.values(
+      state.patterns[`db/tables/${event.data.table}/rows/`] || {}
+    );
+    return new MutationBatch()
+      .emit(new Event('scan_result', { table: event.data.table, rows }));
+  }
+}
+
+
+// ═══ src/gates/database/IndexScanGate.js ═══
+/**
+ * IndexScanGate — reads rows using an index.
+ * Supports eq, range, gt, lt, gte, lte operations.
+ */
+
+class IndexScanGate extends StateGate {
+  constructor() { super('index_scan'); }
+
+  reads(event) {
+    const table = event.data.table;
+    return new ReadSet()
+      .ref(`db/tables/${table}/indexes/${event.data.index}`)
+      .pattern(`db/tables/${table}/rows/`);
+  }
+
+  transform(event, state) {
+    const { table, index: indexName, op, value, low, high } = event.data;
+    const index = state.refs[`db/tables/${table}/indexes/${indexName}`];
+
+    if (index === null) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `Index '${indexName}' not found`, source: 'index_scan' }));
+    }
+
+    // Find matching row_ids from index
+    const matchingIds = new Set();
+    for (const entry of (index.entries || [])) {
+      if (matchesOp(entry.key, op, value, low, high)) {
+        for (const id of entry.row_ids) {
+          matchingIds.add(id);
+        }
+      }
+    }
+
+    // Resolve rows
+    const allRows = state.patterns[`db/tables/${table}/rows/`] || {};
+    const rows = Object.values(allRows).filter(r => matchingIds.has(r.id));
+
+    return new MutationBatch()
+      .emit(new Event('scan_result', { table, rows }));
+  }
+}
+
+function matchesOp(key, op, value, low, high) {
+  switch (op) {
+    case 'eq':  return key === value;
+    case 'neq': return key !== value;
+    case 'gt':  return key > value;
+    case 'lt':  return key < value;
+    case 'gte': return key >= value;
+    case 'lte': return key <= value;
+    case 'range': return key >= low && key <= high;
+    default: return false;
+  }
+}
+
+
+// ═══ src/gates/database/FilterGate.js ═══
+/**
+ * FilterGate — filters rows by a where condition.
+ * PureGate: rows in, filtered rows out. No state access.
+ *
+ * Exports filterRows() for direct use by QueryPlanGate (Phase 5).
+ */
+
+function filterRows(rows, where) {
+  if (!where) return rows;
+  return rows.filter(row => evaluateCondition(where, row));
+}
+
+class FilterGate extends PureGate {
+  constructor() { super('filter'); }
+
+  transform(event) {
+    const filtered = filterRows(event.data.rows, event.data.where);
+    return new Event('filter_result', { rows: filtered });
+  }
+}
+
+
+// ═══ src/gates/database/ProjectionGate.js ═══
+/**
+ * ProjectionGate — selects specific columns from rows.
+ * PureGate: rows in, projected rows out. No state access.
+ *
+ * Exports projectRows() for direct use by QueryPlanGate (Phase 5).
+ */
+
+function projectRows(rows, columns) {
+  if (!columns || columns.length === 0) return rows;
+  if (columns.length === 1 && columns[0] === '*') return rows;
+
+  return rows.map(row => {
+    const projected = {};
+    for (const col of columns) {
+      if (typeof col === 'string') {
+        // Resolve alias.column → column
+        let key = col;
+        if (!(key in row) && key.indexOf('.') !== -1) {
+          key = key.substring(key.indexOf('.') + 1);
+        }
+        const outputName = col.indexOf('.') !== -1 ? col.substring(col.indexOf('.') + 1) : col;
+        projected[outputName] = row[key] !== undefined ? row[key] : null;
+      } else if (col.expr !== undefined && col.alias) {
+        projected[col.alias] = evaluateExpression(col.expr, row);
+      }
+    }
+    return projected;
+  });
+}
+
+class ProjectionGate extends PureGate {
+  constructor() { super('project'); }
+
+  transform(event) {
+    const projected = projectRows(event.data.rows, event.data.columns);
+    return new Event('project_result', { rows: projected });
+  }
+}
+
+
+// ═══ src/gates/database/OrderByGate.js ═══
+/**
+ * OrderByGate — sorts rows by columns and directions.
+ * PureGate: rows in, sorted rows out. No state access.
+ *
+ * Exports orderByRows() for direct use by QueryPlanGate (Phase 5).
+ */
+
+function orderByRows(rows, order) {
+  if (!order || order.length === 0) return rows;
+
+  return [...rows].sort((a, b) => {
+    for (const spec of order) {
+      const { column, direction } = spec;
+      const dir = (direction || 'asc').toLowerCase() === 'desc' ? -1 : 1;
+      const nullsFirst = spec.nulls ? spec.nulls === 'first' : false;
+
+      let va = a[column];
+      if (va === undefined && column.indexOf('.') !== -1) {
+        va = a[column.substring(column.indexOf('.') + 1)];
+      }
+      let vb = b[column];
+      if (vb === undefined && column.indexOf('.') !== -1) {
+        vb = b[column.substring(column.indexOf('.') + 1)];
+      }
+
+      const aNull = (va === null || va === undefined);
+      const bNull = (vb === null || vb === undefined);
+      if (aNull && bNull) continue;
+      if (aNull) return nullsFirst ? -1 : 1;
+      if (bNull) return nullsFirst ? 1 : -1;
+
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+    }
+    return 0;
+  });
+}
+
+class OrderByGate extends PureGate {
+  constructor() { super('order_by'); }
+
+  transform(event) {
+    const sorted = orderByRows(event.data.rows, event.data.order);
+    return new Event('ordered_result', { rows: sorted });
+  }
+}
+
+
+// ═══ src/gates/database/LimitGate.js ═══
+/**
+ * LimitGate — restricts rows to limit/offset window.
+ * PureGate: rows in, sliced rows out. No state access.
+ *
+ * Exports limitRows() for direct use by QueryPlanGate (Phase 5).
+ */
+
+function limitRows(rows, limit, offset = 0) {
+  if (limit === undefined || limit === null) return rows.slice(offset);
+  return rows.slice(offset, offset + limit);
+}
+
+class LimitGate extends PureGate {
+  constructor() { super('limit'); }
+
+  transform(event) {
+    const limited = limitRows(event.data.rows, event.data.limit, event.data.offset);
+    return new Event('limited_result', { rows: limited });
+  }
+}
+
+
+// ═══ src/gates/database/DistinctGate.js ═══
+/**
+ * DistinctGate — removes duplicate rows.
+ * PureGate: rows in, deduplicated rows out. No state access.
+ *
+ * Exports distinctRows() for direct use by QueryPlanGate (Phase 5).
+ */
+
+function distinctRows(rows, columns) {
+  const seen = new Set();
+  return rows.filter(row => {
+    const key = columns && columns.length > 0
+      ? JSON.stringify(columns.map(c => row[c]))
+      : JSON.stringify(row);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+class DistinctGate extends PureGate {
+  constructor() { super('distinct'); }
+
+  transform(event) {
+    const unique = distinctRows(event.data.rows, event.data.columns);
+    return new Event('distinct_result', { rows: unique });
+  }
+}
+
+
+// ═══ src/gates/database/AggregateGate.js ═══
+/**
+ * AggregateGate — computes aggregations (COUNT, SUM, AVG, MIN, MAX)
+ * with optional GROUP BY.
+ * PureGate: rows in, aggregated rows out. No state access.
+ *
+ * Exports aggregateRows() for direct use by QueryPlanGate (Phase 5).
+ */
+
+function aggregateRows(rows, aggregates, groupBy) {
+  // Group rows
+  const groups = groupRows(rows, groupBy);
+
+  // Compute aggregates per group
+  return groups.map(({ key, rows: groupedRows }) => {
+    const result = {};
+
+    // Include group-by columns
+    if (groupBy && groupBy.length > 0 && groupedRows.length > 0) {
+      for (const col of groupBy) {
+        // Strip table prefix for output: s.region → region
+        const outKey = col.includes('.') ? col.split('.').pop() : col;
+        result[outKey] = resolveCol(groupedRows[0], col);
+      }
+    }
+
+    // Compute each aggregate
+    for (const agg of aggregates) {
+      const alias = agg.alias || `${agg.fn}_${agg.column}`;
+      const val = computeAggregate(
+        agg.fn, agg.column, groupedRows, agg.distinct || false, agg.separator || ','
+      );
+      result[alias] = val;
+      // Add synthetic key for HAVING: e.g. "SUM(amount)"
+      const synKey = `${agg.fn.toUpperCase()}(${agg.column})`;
+      if (synKey !== alias) result[synKey] = val;
+    }
+
+    return result;
+  });
+}
+
+/** Resolve a column value from a row, handling qualified names (table.col → col fallback) */
+function resolveCol(row, col) {
+  if (col in row) return row[col];
+  if (col.includes('.')) {
+    const bare = col.split('.').pop();
+    if (bare in row) return row[bare];
+  }
+  return undefined;
+}
+
+function groupRows(rows, groupBy) {
+  if (!groupBy || groupBy.length === 0) {
+    return [{ key: null, rows }];
+  }
+
+  const groups = new Map();
+  for (const row of rows) {
+    const key = JSON.stringify(groupBy.map(c => resolveCol(row, c)));
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+
+  return [...groups.entries()].map(([key, rows]) => ({ key, rows }));
+}
+
+function computeAggregate(fn, column, rows, distinct = false, separator = ',') {
+  switch (fn.toUpperCase()) {
+    case 'COUNT': {
+      if (column === '*') return rows.length;
+      let vals = rows.filter(r => { const v = resolveCol(r, column); return v !== null && v !== undefined; });
+      if (distinct) {
+        const seen = new Set();
+        vals = vals.filter(r => { const v = resolveCol(r, column); if (seen.has(v)) return false; seen.add(v); return true; });
+      }
+      return vals.length;
+    }
+
+    case 'SUM': {
+      const vals = numericValues(rows, column);
+      return vals.length === 0 ? 0 : vals.reduce((a, b) => a + b, 0);
+    }
+
+    case 'AVG': {
+      const vals = numericValues(rows, column);
+      return vals.length === 0 ? null : vals.reduce((a, b) => a + b, 0) / vals.length;
+    }
+
+    case 'MIN': {
+      const vals = nonNullValues(rows, column);
+      if (vals.length === 0) return null;
+      return vals.reduce((min, v) => v < min ? v : min, vals[0]);
+    }
+
+    case 'MAX': {
+      const vals = nonNullValues(rows, column);
+      if (vals.length === 0) return null;
+      return vals.reduce((max, v) => v > max ? v : max, vals[0]);
+    }
+
+    case 'GROUP_CONCAT': {
+      let vals = rows.map(r => resolveCol(r, column)).filter(v => v !== null && v !== undefined).map(String);
+      if (distinct) vals = [...new Set(vals)];
+      return vals.length > 0 ? vals.join(separator) : null;
+    }
+
+    default:
+      return null;
+  }
+}
+
+function numericValues(rows, column) {
+  return rows
+    .map(r => resolveCol(r, column))
+    .filter(v => v !== null && v !== undefined && typeof v === 'number');
+}
+
+function nonNullValues(rows, column) {
+  return rows
+    .map(r => resolveCol(r, column))
+    .filter(v => v !== null && v !== undefined);
+}
+
+class AggregateGate extends PureGate {
+  constructor() { super('aggregate'); }
+
+  transform(event) {
+    const result = aggregateRows(
+      event.data.rows,
+      event.data.aggregates,
+      event.data.groupBy
+    );
+    return new Event('aggregate_result', { rows: result });
+  }
+}
+
+
+// ═══ src/gates/database/JoinGate.js ═══
+/**
+ * JoinGate — joins two tables.
+ * Supports inner, left, right, full join types.
+ *
+ * Exports joinRows() for direct use by QueryPlanGate (Phase 5).
+ */
+
+function joinRows(leftRows, rightRows, on, type = 'inner', leftTable = '', rightTable = '') {
+  const results = [];
+  const rightMatched = new Set();
+
+  // CROSS JOIN — cartesian product
+  if (type === 'cross' || (on === null && type === 'inner')) {
+    for (const left of leftRows) {
+      for (const right of rightRows) {
+        results.push(mergeJoinRow(left, right, leftTable, rightTable));
+      }
+    }
+    return results;
+  }
+
+  for (const left of leftRows) {
+    let matched = false;
+    for (let i = 0; i < rightRows.length; i++) {
+      const right = rightRows[i];
+      if (matchesJoin(left, right, on)) {
+        results.push(mergeJoinRow(left, right, leftTable, rightTable));
+        rightMatched.add(i);
+        matched = true;
+      }
+    }
+    if (!matched && (type === 'left' || type === 'full')) {
+      results.push(mergeJoinRow(left, nullRow(rightRows), leftTable, rightTable));
+    }
+  }
+
+  if (type === 'right' || type === 'full') {
+    for (let i = 0; i < rightRows.length; i++) {
+      if (!rightMatched.has(i)) {
+        results.push(mergeJoinRow(nullRow(leftRows), rightRows[i], leftTable, rightTable));
+      }
+    }
+  }
+
+  return results;
+}
+
+function resolveCol(row, col) {
+  if (col in row) return row[col];
+  const dot = col.indexOf('.');
+  if (dot !== -1) {
+    const short = col.substring(dot + 1);
+    if (short in row) return row[short];
+  }
+  return undefined;
+}
+
+function matchesJoin(left, right, on) {
+  if (Array.isArray(on)) {
+    return on.every(o => resolveCol(left, o.left) === resolveCol(right, o.right));
+  }
+  return resolveCol(left, on.left) === resolveCol(right, on.right);
+}
+
+function mergeJoinRow(left, right, leftTable, rightTable) {
+  const merged = {};
+  // Add all left columns with qualified names
+  for (const [key, value] of Object.entries(left)) {
+    merged[key] = value;
+    if (leftTable) merged[`${leftTable}.${key}`] = value;
+  }
+  // Add right columns with qualified names; on conflict, don't overwrite base key
+  for (const [key, value] of Object.entries(right)) {
+    if (rightTable) merged[`${rightTable}.${key}`] = value;
+    if (!(key in merged)) {
+      merged[key] = value;
+    }
+  }
+  return merged;
+}
+
+function nullRow(sampleRows) {
+  if (sampleRows.length === 0) return {};
+  const row = {};
+  for (const key of Object.keys(sampleRows[0])) {
+    row[key] = null;
+  }
+  return row;
+}
+
+class JoinGate extends StateGate {
+  constructor() { super('join'); }
+
+  reads(event) {
+    return new ReadSet()
+      .pattern(`db/tables/${event.data.left.table}/rows/`)
+      .pattern(`db/tables/${event.data.right.table}/rows/`);
+  }
+
+  transform(event, state) {
+    const { left, right, on, type } = event.data;
+    const leftRows = Object.values(state.patterns[`db/tables/${left.table}/rows/`] || {});
+    const rightRows = Object.values(state.patterns[`db/tables/${right.table}/rows/`] || {});
+    const rows = joinRows(leftRows, rightRows, on, type || 'inner');
+    return new MutationBatch()
+      .emit(new Event('join_result', { rows }));
+  }
+}
+
+
+// ═══ src/gates/database/InsertExecuteGate.js ═══
+/**
+ * InsertExecuteGate — inserts a row into a table.
+ * Validates against schema, assigns id, updates counter.
+ */
+
+class InsertExecuteGate extends StateGate {
+  constructor() { super('insert_execute'); }
+
+  reads(event) {
+    const table = event.data.table;
+    const rs = new ReadSet()
+      .ref(`db/tables/${table}/schema`)
+      .ref(`db/tables/${table}/next_id`)
+      .pattern(`db/tables/${table}/indexes/`);
+    if (event.data.onConflict) {
+      rs.pattern(`db/tables/${table}/rows/`);
+    }
+    return rs;
+  }
+
+  transform(event, state) {
+    const { table, row } = event.data;
+    const schema = state.refs[`db/tables/${table}/schema`];
+    const onConflict = event.data.onConflict || null;
+    const returning = event.data.returning || null;
+
+    if (schema === null) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `Table '${table}' does not exist`, source: 'insert_execute' }));
+    }
+
+    // UPSERT: check for conflict
+    if (onConflict && onConflict.column) {
+      const conflictCol = onConflict.column;
+      const conflictVal = row[conflictCol] ?? null;
+      const allRows = state.patterns[`db/tables/${table}/rows/`] || {};
+
+      for (const [refName, existingRow] of Object.entries(allRows)) {
+        if ((existingRow[conflictCol] ?? null) === conflictVal) {
+          if (onConflict.action === 'nothing') {
+            const batch = new MutationBatch()
+              .emit(new Event('row_inserted', { table, id: existingRow.id, row: existingRow, conflict: 'skipped' }));
+            if (returning) batch.emit(new Event('query_result', { rows: [applyReturning(existingRow, returning)] }));
+            return batch;
+          }
+          // DO UPDATE SET
+          const newRow = { ...existingRow };
+          for (const [col, expr] of Object.entries(onConflict.updates)) {
+            newRow[col] = evaluateExpression(expr, existingRow);
+          }
+          const batch = new MutationBatch()
+            .put('row', newRow)
+            .refSet(refName, 0);
+
+          const indexes = state.patterns[`db/tables/${table}/indexes/`] || {};
+          let putIdx = 1;
+          for (const [idxRef, index] of Object.entries(indexes)) {
+            const remaining = Object.entries(allRows).map(([rn, r]) => rn === refName ? newRow : r);
+            batch.put('btree', rebuildIndex(index, remaining));
+            batch.refSet(idxRef, putIdx++);
+          }
+
+          batch.emit(new Event('row_inserted', { table, id: newRow.id, row: newRow, conflict: 'updated' }));
+          if (returning) batch.emit(new Event('query_result', { rows: [applyReturning(newRow, returning)] }));
+          return batch;
+        }
+      }
+      // No conflict → proceed with normal insert
+    }
+
+    // Compute next id
+    const counter = parseInt(state.refs[`db/tables/${table}/next_id`]) || 0;
+    const id = counter + 1;
+
+    // Build complete row with defaults
+    const completeRow = { id };
+    for (const col of schema.columns) {
+      if (col.name === 'id') continue;
+      if (row[col.name] !== undefined) {
+        completeRow[col.name] = row[col.name];
+      } else if (col.default !== undefined && col.default !== null) {
+        completeRow[col.name] = col.default;
+      } else if (col.nullable === false) {
+        return new MutationBatch()
+          .emit(new Event('error', {
+            message: `Column '${col.name}' cannot be null`,
+            source: 'insert_execute'
+          }));
+      } else {
+        completeRow[col.name] = null;
+      }
+    }
+
+    const batch = new MutationBatch()
+      .put('row', completeRow)
+      .refSet(`db/tables/${table}/rows/${id}`, 0)
+      .put('counter', String(id))
+      .refSet(`db/tables/${table}/next_id`, 1);
+
+    // Update indexes
+    const indexes = state.patterns[`db/tables/${table}/indexes/`] || {};
+    let putIdx = 2; // next available puts index
+    for (const [refName, index] of Object.entries(indexes)) {
+      const updated = addToIndex(index, completeRow);
+      batch.put('btree', updated);
+      batch.refSet(refName, putIdx++);
+    }
+
+    batch.emit(new Event('row_inserted', { table, id, row: completeRow }));
+
+    // RETURNING
+    if (returning) {
+      batch.emit(new Event('query_result', { rows: [applyReturning(completeRow, returning)] }));
+    }
+
+    return batch;
+  }
+}
+
+function addToIndex(index, row) {
+  const key = row[index.column];
+  const entries = [...(index.entries || [])];
+  const existing = entries.find(e => e.key === key);
+  if (existing) {
+    existing.row_ids = [...existing.row_ids, row.id];
+  } else {
+    entries.push({ key, row_ids: [row.id] });
+  }
+  return { ...index, entries };
+}
+
+function applyReturning(row, cols) {
+  if (cols[0] === '*') return row;
+  const out = {};
+  for (const c of cols) out[c] = row[c] ?? null;
+  return out;
+}
+
+
+// ═══ src/gates/database/UpdateExecuteGate.js ═══
+/**
+ * UpdateExecuteGate — updates rows in a table.
+ * Supports update by id or by where clause.
+ * Phase 12: supports expression-based SET values (e.g. SET price = price + 1).
+ */
+
+class UpdateExecuteGate extends StateGate {
+  constructor() { super('update_execute'); }
+
+  reads(event) {
+    const table = event.data.table;
+    const rs = new ReadSet()
+      .ref(`db/tables/${table}/schema`)
+      .pattern(`db/tables/${table}/rows/`)
+      .pattern(`db/tables/${table}/indexes/`);
+    if (event.data.fromTable) rs.pattern(`db/tables/${event.data.fromTable}/rows/`);
+    if (event.data.where) scanConditionSubqueries(event.data.where, rs);
+    return rs;
+  }
+
+  transform(event, state) {
+    const { table, changes, id, changesExprs } = event.data;
+    let where = event.data.where || null;
+    if (where) where = resolveConditionSubqueries(where, state);
+    const schema = state.refs[`db/tables/${table}/schema`];
+    const fromTable = event.data.fromTable || null;
+    const fromAlias = event.data.fromAlias || fromTable;
+
+    if (schema === null) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `Table '${table}' does not exist`, source: 'update_execute' }));
+    }
+
+    const allRows = state.patterns[`db/tables/${table}/rows/`] || {};
+
+    const targets = [];
+    if (fromTable) {
+      const fromRows = Object.values(state.patterns[`db/tables/${fromTable}/rows/`] || {});
+      for (const [refName, row] of Object.entries(allRows)) {
+        for (const fromRow of fromRows) {
+          const merged = { ...row };
+          for (const [k, v] of Object.entries(fromRow)) {
+            merged[`${fromAlias}.${k}`] = v;
+            merged[`${fromTable}.${k}`] = v;
+            if (!(k in merged)) merged[k] = v;
+          }
+          for (const [k, v] of Object.entries(row)) {
+            merged[`${table}.${k}`] = v;
+          }
+          if (!where || evaluateCondition(where, merged)) {
+            targets.push({ refName, row, context: merged });
+          }
+        }
+      }
+    } else {
+      for (const [refName, row] of Object.entries(allRows)) {
+        if (id !== undefined && row.id === id) {
+          targets.push({ refName, row, context: row });
+        } else if (where && evaluateCondition(where, row)) {
+          targets.push({ refName, row, context: row });
+        } else if (id === undefined && !where) {
+          targets.push({ refName, row, context: row });
+        }
+      }
+    }
+
+    if (targets.length === 0) {
+      return new MutationBatch()
+        .emit(new Event('row_updated', { table, ids: [], changes }));
+    }
+
+    const batch = new MutationBatch();
+    const updatedIds = [];
+    const updatedRows = [];
+    let putIdx = 0;
+
+    const targetChangeMaps = new Map();
+    for (const { refName, row, context } of targets) {
+      const ctx = context || row;
+      const rowChanges = { ...changes };
+      if (changesExprs) {
+        for (const [col, expr] of Object.entries(changesExprs)) {
+          rowChanges[col] = evaluateExpression(expr, ctx);
+        }
+      }
+      targetChangeMaps.set(refName, rowChanges);
+      const newRow = { ...row, ...rowChanges };
+      batch.put('row', newRow);
+      batch.refSet(refName, putIdx++);
+      updatedIds.push(row.id);
+      updatedRows.push(newRow);
+    }
+
+    const indexes = state.patterns[`db/tables/${table}/indexes/`] || {};
+    for (const [idxRef, index] of Object.entries(indexes)) {
+      const allUpdated = {};
+      for (const [refName, row] of Object.entries(allRows)) {
+        const rowChanges = targetChangeMaps.get(refName);
+        allUpdated[refName] = rowChanges ? { ...row, ...rowChanges } : row;
+      }
+      const rebuilt = rebuildIndex(index, Object.values(allUpdated));
+      batch.put('btree', rebuilt);
+      batch.refSet(idxRef, putIdx++);
+    }
+
+    batch.emit(new Event('row_updated', { table, ids: updatedIds, changes }));
+
+    // RETURNING
+    const returning = event.data.returning || null;
+    if (returning && updatedRows.length > 0) {
+      const returnedRows = updatedRows.map(row => {
+        if (returning[0] === '*') return row;
+        const out = {};
+        for (const c of returning) out[c] = row[c] ?? null;
+        return out;
+      });
+      batch.emit(new Event('query_result', { rows: returnedRows }));
+    }
+
+    return batch;
+  }
+}
+
+function rebuildIndex(index, rows) {
+  const entries = [];
+  for (const row of rows) {
+    const key = row[index.column];
+    const existing = entries.find(e => e.key === key);
+    if (existing) {
+      existing.row_ids.push(row.id);
+    } else {
+      entries.push({ key, row_ids: [row.id] });
+    }
+  }
+  return { ...index, entries };
+}
+
+
+// ═══ src/gates/database/DeleteExecuteGate.js ═══
+/**
+ * DeleteExecuteGate — deletes rows from a table.
+ * Supports delete by id or by where clause.
+ */
+
+class DeleteExecuteGate extends StateGate {
+  constructor() { super('delete_execute'); }
+
+  reads(event) {
+    const table = event.data.table;
+    const rs = new ReadSet()
+      .pattern(`db/tables/${table}/rows/`)
+      .pattern(`db/tables/${table}/indexes/`);
+    if (event.data.where) scanConditionSubqueries(event.data.where, rs);
+    return rs;
+  }
+
+  transform(event, state) {
+    const { table, id } = event.data;
+    let where = event.data.where || null;
+    if (where) where = resolveConditionSubqueries(where, state);
+    const allRows = state.patterns[`db/tables/${table}/rows/`] || {};
+
+    // Find rows to delete
+    const targets = [];
+    for (const [refName, row] of Object.entries(allRows)) {
+      if (id !== undefined && row.id === id) {
+        targets.push({ refName, row });
+      } else if (where && evaluateCondition(where, row)) {
+        targets.push({ refName, row });
+      } else if (id === undefined && !where) {
+        targets.push({ refName, row }); // delete all
+      }
+    }
+
+    const batch = new MutationBatch();
+    const deletedIds = [];
+
+    for (const { refName, row } of targets) {
+      batch.refDelete(refName);
+      deletedIds.push(row.id);
+    }
+
+    // Rebuild indexes without deleted rows
+    const indexes = state.patterns[`db/tables/${table}/indexes/`] || {};
+    const targetRefNames = new Set(targets.map(t => t.refName));
+    let putIdx = 0;
+
+    for (const [idxRef, index] of Object.entries(indexes)) {
+      const remaining = Object.entries(allRows)
+        .filter(([refName]) => !targetRefNames.has(refName))
+        .map(([, row]) => row);
+      const rebuilt = rebuildIndex(index, remaining);
+      batch.put('btree', rebuilt);
+      batch.refSet(idxRef, putIdx++);
+    }
+
+    batch.emit(new Event('row_deleted', { table, ids: deletedIds }));
+
+    // RETURNING
+    const returning = event.data.returning || null;
+    if (returning && targets.length > 0) {
+      const returnedRows = targets.map(t => {
+        const row = t.row;
+        if (returning[0] === '*') return row;
+        const out = {};
+        for (const c of returning) out[c] = row[c] ?? null;
+        return out;
+      });
+      batch.emit(new Event('query_result', { rows: returnedRows }));
+    }
+
+    return batch;
+  }
+}
+
+function rebuildIndex(index, rows) {
+  const entries = [];
+  for (const row of rows) {
+    const key = row[index.column];
+    const existing = entries.find(e => e.key === key);
+    if (existing) {
+      existing.row_ids.push(row.id);
+    } else {
+      entries.push({ key, row_ids: [row.id] });
+    }
+  }
+  return { ...index, entries };
+}
+
+
+// ═══ src/gates/database/IndexCreateExecuteGate.js ═══
+/**
+ * IndexCreateExecuteGate — creates an index on a table column.
+ * Scans all rows to build the initial index.
+ */
+
+class IndexCreateExecuteGate extends StateGate {
+  constructor() { super('index_create_execute'); }
+
+  reads(event) {
+    const table = event.data.table;
+    return new ReadSet()
+      .ref(`db/tables/${table}/schema`)
+      .pattern(`db/tables/${table}/rows/`);
+  }
+
+  transform(event, state) {
+    const { table, index, column, unique } = event.data;
+    const schema = state.refs[`db/tables/${table}/schema`];
+
+    if (schema === null) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `Table '${table}' does not exist`, source: 'index_create_execute' }));
+    }
+
+    // Verify column exists
+    if (!schema.columns.some(c => c.name === column)) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `Column '${column}' does not exist`, source: 'index_create_execute' }));
+    }
+
+    // Build index from existing rows
+    const rows = Object.values(state.patterns[`db/tables/${table}/rows/`] || {});
+    const entries = [];
+
+    for (const row of rows) {
+      const key = row[column];
+      const existing = entries.find(e => e.key === key);
+      if (existing) {
+        if (unique) {
+          return new MutationBatch()
+            .emit(new Event('error', { message: `Duplicate value '${key}' for unique index`, source: 'index_create_execute' }));
+        }
+        existing.row_ids.push(row.id);
+      } else {
+        entries.push({ key, row_ids: [row.id] });
+      }
+    }
+
+    const btree = { column, unique: !!unique, entries };
+
+    return new MutationBatch()
+      .put('btree', btree)
+      .refSet(`db/tables/${table}/indexes/${index}`, 0)
+      .emit(new Event('index_created', { table, index }));
+  }
+}
+
+
+// ═══ src/gates/database/IndexDropExecuteGate.js ═══
+/**
+ * IndexDropExecuteGate — drops an index.
+ */
+
+class IndexDropExecuteGate extends StateGate {
+  constructor() { super('index_drop_execute'); }
+
+  reads(event) {
+    return new ReadSet()
+      .ref(`db/tables/${event.data.table}/indexes/${event.data.index}`);
+  }
+
+  transform(event, state) {
+    const { table, index } = event.data;
+    const existing = state.refs[`db/tables/${table}/indexes/${index}`];
+
+    if (existing === null) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `Index '${index}' does not exist`, source: 'index_drop_execute' }));
+    }
+
+    return new MutationBatch()
+      .refDelete(`db/tables/${table}/indexes/${index}`)
+      .emit(new Event('index_dropped', { table, index }));
+  }
+}
+
+
+// ═══ src/gates/database/ViewGates.js ═══
+/**
+ * View gates — create, drop, and expand views.
+ */
+
+class ViewCreateExecuteGate extends StateGate {
+  constructor() { super('view_create_execute'); }
+
+  reads(event) {
+    return new ReadSet().ref(`db/views/${event.data.name}`);
+  }
+
+  transform(event, state) {
+    const { name, query, columns } = event.data;
+    const existing = state.refs[`db/views/${name}`];
+
+    if (existing !== null) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `View '${name}' already exists`, source: 'view_create_execute' }));
+    }
+
+    return new MutationBatch()
+      .put('view', { name, query, columns })
+      .refSet(`db/views/${name}`, 0)
+      .emit(new Event('view_created', { name }));
+  }
+}
+
+class ViewDropExecuteGate extends StateGate {
+  constructor() { super('view_drop_execute'); }
+
+  reads(event) {
+    return new ReadSet().ref(`db/views/${event.data.name}`);
+  }
+
+  transform(event, state) {
+    const { name } = event.data;
+    if (state.refs[`db/views/${name}`] === null) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `View '${name}' does not exist`, source: 'view_drop_execute' }));
+    }
+
+    return new MutationBatch()
+      .refDelete(`db/views/${name}`)
+      .emit(new Event('view_dropped', { name }));
+  }
+}
+
+class ViewExpansionGate extends StateGate {
+  constructor() { super('view_expand'); }
+
+  reads(event) {
+    return new ReadSet().ref(`db/views/${event.data.view}`);
+  }
+
+  transform(event, state) {
+    const viewDef = state.refs[`db/views/${event.data.view}`];
+
+    if (viewDef === null) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `View '${event.data.view}' does not exist`, source: 'view_expand' }));
+    }
+
+    // Re-emit the stored query as a query_plan event
+    return new MutationBatch()
+      .emit(new Event('query_plan', { pipeline: viewDef.query.pipeline || [] }));
+  }
+}
+
+
+// ═══ src/gates/database/TriggerGates.js ═══
+/**
+ * Trigger gates — create and drop triggers.
+ */
+
+class TriggerCreateExecuteGate extends StateGate {
+  constructor() { super('trigger_create_execute'); }
+
+  reads(event) {
+    return new ReadSet().ref(`db/triggers/${event.data.name}`);
+  }
+
+  transform(event, state) {
+    const { name, table, timing, event: triggerEvent, action } = event.data;
+    const existing = state.refs[`db/triggers/${name}`];
+
+    if (existing !== null) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `Trigger '${name}' already exists`, source: 'trigger_create_execute' }));
+    }
+
+    return new MutationBatch()
+      .put('trigger', { name, table, timing, event: triggerEvent, action })
+      .refSet(`db/triggers/${name}`, 0)
+      .emit(new Event('trigger_created', { name }));
+  }
+}
+
+class TriggerDropExecuteGate extends StateGate {
+  constructor() { super('trigger_drop_execute'); }
+
+  reads(event) {
+    return new ReadSet().ref(`db/triggers/${event.data.name}`);
+  }
+
+  transform(event, state) {
+    const { name } = event.data;
+    if (state.refs[`db/triggers/${name}`] === null) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `Trigger '${name}' does not exist`, source: 'trigger_drop_execute' }));
+    }
+
+    return new MutationBatch()
+      .refDelete(`db/triggers/${name}`)
+      .emit(new Event('trigger_dropped', { name }));
+  }
+}
+
+
+// ═══ src/gates/database/ConstraintGates.js ═══
+/**
+ * Constraint gates — create and drop constraints.
+ */
+
+class ConstraintCreateExecuteGate extends StateGate {
+  constructor() { super('constraint_create_execute'); }
+
+  reads(event) {
+    const { table, name } = event.data;
+    return new ReadSet()
+      .ref(`db/tables/${table}/schema`)
+      .ref(`db/constraints/${table}/${name}`);
+  }
+
+  transform(event, state) {
+    const { table, name, type, params } = event.data;
+    const schema = state.refs[`db/tables/${table}/schema`];
+    const existing = state.refs[`db/constraints/${table}/${name}`];
+
+    if (schema === null) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `Table '${table}' does not exist`, source: 'constraint_create_execute' }));
+    }
+
+    if (existing !== null) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `Constraint '${name}' already exists`, source: 'constraint_create_execute' }));
+    }
+
+    return new MutationBatch()
+      .put('constraint', { name, table, type, params })
+      .refSet(`db/constraints/${table}/${name}`, 0)
+      .emit(new Event('constraint_created', { table, name }));
+  }
+}
+
+class ConstraintDropExecuteGate extends StateGate {
+  constructor() { super('constraint_drop_execute'); }
+
+  reads(event) {
+    return new ReadSet()
+      .ref(`db/constraints/${event.data.table}/${event.data.name}`);
+  }
+
+  transform(event, state) {
+    const { table, name } = event.data;
+    if (state.refs[`db/constraints/${table}/${name}`] === null) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `Constraint '${name}' does not exist`, source: 'constraint_drop_execute' }));
+    }
+
+    return new MutationBatch()
+      .refDelete(`db/constraints/${table}/${name}`)
+      .emit(new Event('constraint_dropped', { table, name }));
+  }
+}
+
+
+// ═══ src/gates/database/TransactionGates.js ═══
+/**
+ * TransactionGates — BEGIN, COMMIT, ROLLBACK.
+ * Uses Runner's snapshot/restore for isolation.
+ */
+
+class TransactionManager {
+  constructor() {
+    this.snapshots = [];
+    this.active = false;
+  }
+
+  isActive() { return this.active; }
+
+  begin(snapshot) {
+    if (this.active) throw new Error('Transaction already active');
+    this.snapshots.push(snapshot);
+    this.active = true;
+  }
+
+  commit() {
+    if (!this.active) throw new Error('No active transaction');
+    this.snapshots.pop();
+    this.active = false;
+  }
+
+  rollback() {
+    if (!this.active) throw new Error('No active transaction');
+    this.active = false;
+    return this.snapshots.pop();
+  }
+}
+
+class TransactionBeginGate extends Gate {
+  constructor(txn, snapshotFn) {
+    super('transaction_begin');
+    this.txn = txn;
+    this.snapshotFn = snapshotFn;
+  }
+
+  transform(event, stream) {
+    try {
+      const snapshot = this.snapshotFn();
+      this.txn.begin(snapshot);
+      stream.emit(new Event('transaction_begun', {}));
+    } catch (err) {
+      stream.emit(new Event('error', { message: err.message, source: 'transaction_begin' }));
+    }
+  }
+}
+
+class TransactionCommitGate extends Gate {
+  constructor(txn) {
+    super('transaction_commit');
+    this.txn = txn;
+  }
+
+  transform(event, stream) {
+    try {
+      this.txn.commit();
+      stream.emit(new Event('transaction_committed', {}));
+    } catch (err) {
+      stream.emit(new Event('error', { message: err.message, source: 'transaction_commit' }));
+    }
+  }
+}
+
+class TransactionRollbackGate extends Gate {
+  constructor(txn, restoreFn) {
+    super('transaction_rollback');
+    this.txn = txn;
+    this.restoreFn = restoreFn;
+  }
+
+  transform(event, stream) {
+    try {
+      const snapshot = this.txn.rollback();
+      if (snapshot) this.restoreFn(snapshot);
+      stream.emit(new Event('transaction_rolled_back', {}));
+    } catch (err) {
+      stream.emit(new Event('error', { message: err.message, source: 'transaction_rollback' }));
+    }
+  }
+}
+
+
+// ═══ src/gates/database/AlterTableGates.js ═══
+/**
+ * AlterTableGates — ALTER TABLE ADD COLUMN, DROP COLUMN, RENAME TABLE.
+ */
+
+class AlterTableAddColumnGate extends StateGate {
+  constructor() { super('alter_table_add_column'); }
+
+  reads(event) {
+    const t = event.data.table;
+    return new ReadSet()
+      .ref(`db/tables/${t}/schema`)
+      .pattern(`db/tables/${t}/rows/`);
+  }
+
+  transform(event, state) {
+    const { table, column } = event.data;
+    const schema = state.refs[`db/tables/${table}/schema`];
+
+    if (schema === null) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `Table '${table}' does not exist`, source: 'alter_table_add_column' }));
+    }
+
+    // Check duplicate
+    if (schema.columns.some(c => c.name === column.name)) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `Column '${column.name}' already exists`, source: 'alter_table_add_column' }));
+    }
+
+    const newSchema = {
+      ...schema,
+      columns: [...schema.columns, {
+        name: column.name,
+        type: column.type || 'text',
+        nullable: column.nullable !== undefined ? column.nullable : true,
+        default: column.default !== undefined ? column.default : null,
+      }],
+    };
+
+    const batch = new MutationBatch()
+      .put('schema', newSchema)
+      .refSet(`db/tables/${table}/schema`, 0);
+
+    // Backfill existing rows
+    const defaultVal = column.default !== undefined ? column.default : null;
+    const rows = state.patterns[`db/tables/${table}/rows/`] || {};
+    let putIdx = 1;
+    for (const [refName, row] of Object.entries(rows)) {
+      const updatedRow = { ...row, [column.name]: defaultVal };
+      batch.put('row', updatedRow);
+      batch.refSet(refName, putIdx++);
+    }
+
+    return batch.emit(new Event('column_added', { table, column: column.name }));
+  }
+}
+
+class AlterTableDropColumnGate extends StateGate {
+  constructor() { super('alter_table_drop_column'); }
+
+  reads(event) {
+    const t = event.data.table;
+    return new ReadSet()
+      .ref(`db/tables/${t}/schema`)
+      .pattern(`db/tables/${t}/rows/`);
+  }
+
+  transform(event, state) {
+    const { table, column } = event.data;
+    const schema = state.refs[`db/tables/${table}/schema`];
+
+    if (schema === null) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `Table '${table}' does not exist`, source: 'alter_table_drop_column' }));
+    }
+
+    if (!schema.columns.some(c => c.name === column)) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `Column '${column}' does not exist`, source: 'alter_table_drop_column' }));
+    }
+
+    if (column === 'id') {
+      return new MutationBatch()
+        .emit(new Event('error', { message: "Cannot drop 'id' column", source: 'alter_table_drop_column' }));
+    }
+
+    const newSchema = {
+      ...schema,
+      columns: schema.columns.filter(c => c.name !== column),
+    };
+
+    const batch = new MutationBatch()
+      .put('schema', newSchema)
+      .refSet(`db/tables/${table}/schema`, 0);
+
+    // Remove column from rows
+    const rows = state.patterns[`db/tables/${table}/rows/`] || {};
+    let putIdx = 1;
+    for (const [refName, row] of Object.entries(rows)) {
+      const { [column]: _, ...rest } = row;
+      batch.put('row', rest);
+      batch.refSet(refName, putIdx++);
+    }
+
+    return batch.emit(new Event('column_dropped', { table, column }));
+  }
+}
+
+class RenameTableGate extends StateGate {
+  constructor() { super('rename_table'); }
+
+  reads(event) {
+    const { table: oldT, newName: newT } = event.data;
+    return new ReadSet()
+      .ref(`db/tables/${oldT}/schema`)
+      .ref(`db/tables/${oldT}/next_id`)
+      .ref(`db/tables/${newT}/schema`)
+      .pattern(`db/tables/${oldT}/rows/`)
+      .pattern(`db/tables/${oldT}/indexes/`);
+  }
+
+  transform(event, state) {
+    const { table: oldTable, newName: newTable } = event.data;
+    const schema = state.refs[`db/tables/${oldTable}/schema`];
+
+    if (schema === null) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `Table '${oldTable}' does not exist`, source: 'rename_table' }));
+    }
+
+    if (state.refs[`db/tables/${newTable}/schema`] !== null) {
+      return new MutationBatch()
+        .emit(new Event('error', { message: `Table '${newTable}' already exists`, source: 'rename_table' }));
+    }
+
+    const newSchema = { ...schema, name: newTable };
+    const batch = new MutationBatch();
+
+    batch.put('schema', newSchema);
+    batch.refSet(`db/tables/${newTable}/schema`, 0);
+
+    const nextId = state.refs[`db/tables/${oldTable}/next_id`];
+    let putIdx = 1;
+    if (nextId !== null) {
+      batch.put('counter', nextId);
+      batch.refSet(`db/tables/${newTable}/next_id`, putIdx++);
+    }
+
+    batch.refDelete(`db/tables/${oldTable}/schema`);
+    batch.refDelete(`db/tables/${oldTable}/next_id`);
+
+    // Copy rows
+    const rows = state.patterns[`db/tables/${oldTable}/rows/`] || {};
+    for (const [refName, row] of Object.entries(rows)) {
+      const rowId = row.id || refName.split('/').pop();
+      batch.put('row', row);
+      batch.refSet(`db/tables/${newTable}/rows/${rowId}`, putIdx++);
+      batch.refDelete(refName);
+    }
+
+    // Copy indexes
+    const indexes = state.patterns[`db/tables/${oldTable}/indexes/`] || {};
+    for (const [refName, index] of Object.entries(indexes)) {
+      const idxName = refName.split('/').pop();
+      batch.put('btree', index);
+      batch.refSet(`db/tables/${newTable}/indexes/${idxName}`, putIdx++);
+      batch.refDelete(refName);
+    }
+
+    return batch.emit(new Event('table_renamed', { oldName: oldTable, newName: newTable }));
+  }
+}
+
+
+// ═══ src/gates/database/InsertSelectPlanGate.js ═══
+/**
+ * InsertSelectPlanGate — executes INSERT...SELECT and CREATE TABLE AS SELECT.
+ * StateGate: reads source tables via pipeline, inserts into target table.
+ */
+
+class InsertSelectPlanGate extends StateGate {
+  constructor() { super('insert_select_plan'); }
+
+  reads(event) {
+    const rs = new ReadSet();
+    const table = event.data.table;
+    rs.ref(`db/tables/${table}/schema`);
+    rs.ref(`db/tables/${table}/next_id`);
+    scanPipelineReads(event.data.pipeline, rs);
+    return rs;
+  }
+
+  transform(event, state) {
+    const { table, columns, pipeline, createTable, ifNotExists } = event.data;
+    const sourceRows = executePipeline(pipeline, state);
+
+    if (sourceRows.length === 0) {
+      if (createTable) {
+        return new MutationBatch()
+          .put('schema', { name: table, columns: [] })
+          .refSet(`db/tables/${table}/schema`, 0)
+          .put('counter', '0')
+          .refSet(`db/tables/${table}/next_id`, 1)
+          .emit(new Event('table_created', { table }));
+      }
+      return new MutationBatch().emit(new Event('rows_inserted', { table, count: 0 }));
+    }
+
+    const batch = new MutationBatch();
+    let putIdx = 0;
+
+    if (createTable) {
+      const existing = state.refs[`db/tables/${table}/schema`];
+      if (existing !== null && existing !== undefined) {
+        if (ifNotExists) {
+          return new MutationBatch().emit(new Event('table_exists', { table }));
+        }
+        return new MutationBatch()
+          .emit(new Event('error', { message: `Table '${table}' already exists`, source: 'insert_select_plan' }));
+      }
+      const colNames = Object.keys(sourceRows[0]).filter(c => c !== 'id');
+      const schemaCols = colNames.map(c => ({ name: c, type: 'text', nullable: true, default: null }));
+      batch.put('schema', { name: table, columns: schemaCols });
+      batch.refSet(`db/tables/${table}/schema`, putIdx++);
+    } else {
+      const schema = state.refs[`db/tables/${table}/schema`];
+      if (!schema) {
+        return new MutationBatch()
+          .emit(new Event('error', { message: `Table '${table}' does not exist`, source: 'insert_select_plan' }));
+      }
+    }
+
+    let counter = parseInt(state.refs[`db/tables/${table}/next_id`] || '0', 10);
+
+    for (const srcRow of sourceRows) {
+      counter++;
+      const newRow = { id: counter };
+      if (columns) {
+        const srcValues = Object.values(srcRow);
+        for (let i = 0; i < columns.length; i++) {
+          newRow[columns[i]] = srcValues[i] !== undefined ? srcValues[i] : null;
+        }
+      } else {
+        for (const [k, v] of Object.entries(srcRow)) {
+          if (k !== 'id') newRow[k] = v;
+        }
+      }
+      batch.put('row', newRow);
+      batch.refSet(`db/tables/${table}/rows/${counter}`, putIdx++);
+    }
+
+    batch.put('counter', String(counter));
+    batch.refSet(`db/tables/${table}/next_id`, putIdx++);
+
+    return batch.emit(new Event('rows_inserted', { table, count: sourceRows.length }));
+  }
+}
+
+function scanPipelineReads(pipeline, rs) {
+  for (const step of pipeline) {
+    if (step.type === 'table_scan') rs.pattern(`db/tables/${step.data.table}/rows/`);
+    if (step.type === 'index_scan') {
+      rs.ref(`db/tables/${step.data.table}/indexes/${step.data.index}`);
+      rs.pattern(`db/tables/${step.data.table}/rows/`);
+    }
+    if (step.type === 'join') rs.pattern(`db/tables/${step.data.right.table}/rows/`);
+    if (step.type === 'union') {
+      scanPipelineReads(step.data.left, rs);
+      scanPipelineReads(step.data.right, rs);
+    }
+  }
+}
+
+function executePipeline(pipeline, state) {
+  let rows = [];
+  for (const step of pipeline) {
+    switch (step.type) {
+      case 'table_scan':
+        rows = Object.values(state.patterns[`db/tables/${step.data.table}/rows/`] || {});
+        break;
+      case 'filter':
+        rows = filterRows(rows, step.data.where);
+        break;
+      case 'project':
+        rows = projectRows(rows, step.data.columns);
+        break;
+      case 'order_by':
+        rows = orderByRows(rows, step.data.order);
+        break;
+      case 'limit':
+        rows = limitRows(rows, step.data.limit, step.data.offset || 0);
+        break;
+      case 'distinct':
+        rows = distinctRows(rows, step.data.columns || null);
+        break;
+      case 'aggregate':
+        rows = aggregateRows(rows, step.data.aggregates, step.data.groupBy || null);
+        break;
+      case 'join': {
+        const rightRows = Object.values(state.patterns[`db/tables/${step.data.right.table}/rows/`] || {});
+        rows = joinRows(rows, rightRows, step.data.on, step.data.type || 'inner');
+        break;
+      }
+      case 'union': {
+        const leftRows = executePipeline(step.data.left, state);
+        const rightRows = executePipeline(step.data.right, state);
+        rows = [...leftRows, ...rightRows];
+        if (!step.data.all) rows = distinctRows(rows, null);
+        break;
+      }
+    }
+  }
+  return rows;
+}
+
+
+// ═══ src/gates/database/register.js ═══
+/**
+ * registerDatabaseGates — registers all database gates on a runner.
+ */
+
+function registerDatabaseGates(runner) {
+  // DDL
+  runner.register(new CreateTableExecuteGate());
+  runner.register(new DropTableExecuteGate());
+
+  // DML
+  runner.register(new InsertExecuteGate());
+  runner.register(new UpdateExecuteGate());
+  runner.register(new DeleteExecuteGate());
+
+  // Query
+  runner.register(new TableScanGate());
+  runner.register(new IndexScanGate());
+  runner.register(new FilterGate());
+  runner.register(new ProjectionGate());
+  runner.register(new OrderByGate());
+  runner.register(new LimitGate());
+  runner.register(new DistinctGate());
+  runner.register(new AggregateGate());
+  runner.register(new JoinGate());
+
+  // Index management
+  runner.register(new IndexCreateExecuteGate());
+  runner.register(new IndexDropExecuteGate());
+
+  // View management
+  runner.register(new ViewCreateExecuteGate());
+  runner.register(new ViewDropExecuteGate());
+  runner.register(new ViewExpansionGate());
+
+  // Trigger management
+  runner.register(new TriggerCreateExecuteGate());
+  runner.register(new TriggerDropExecuteGate());
+
+  // Constraint management
+  runner.register(new ConstraintCreateExecuteGate());
+  runner.register(new ConstraintDropExecuteGate());
+
+  // ALTER TABLE
+  runner.register(new AlterTableAddColumnGate());
+  runner.register(new AlterTableDropColumnGate());
+  runner.register(new RenameTableGate());
+
+  // INSERT...SELECT / CREATE TABLE AS SELECT
+  runner.register(new InsertSelectPlanGate());
+
+  // Transactions
+  const txn = new TransactionManager();
+  runner.register(new TransactionBeginGate(txn, () => runner.snapshot()));
+  runner.register(new TransactionCommitGate(txn));
+  runner.register(new TransactionRollbackGate(txn, (snap) => runner.restore(snap)));
+}
+
+
+// ═══ src/gates/query/sql/tokenizer.js ═══
+/**
+ * SQL Tokenizer — breaks SQL strings into typed tokens.
+ *
+ * Token types: KEYWORD, IDENTIFIER, NUMBER, STRING, OPERATOR, SYMBOL, BOOLEAN, NULL
+ * Case-insensitive keyword matching. Identifiers preserve case.
+ * Quoted identifiers: "col name" or `col name`.
+ */
+
+const KEYWORDS = new Set([
+  'SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'NOT', 'IN', 'LIKE', 'ILIKE', 'IS',
+  'NULL', 'TRUE', 'FALSE', 'AS', 'ON', 'JOIN', 'INNER', 'LEFT', 'RIGHT',
+  'FULL', 'OUTER', 'CROSS', 'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET',
+  'DELETE', 'CREATE', 'DROP', 'TABLE', 'INDEX', 'VIEW', 'TRIGGER',
+  'ALTER', 'ADD', 'CONSTRAINT', 'UNIQUE', 'CHECK', 'FOREIGN', 'KEY',
+  'REFERENCES', 'PRIMARY', 'DEFAULT', 'IF', 'EXISTS', 'ORDER', 'BY',
+  'ASC', 'DESC', 'LIMIT', 'OFFSET', 'GROUP', 'HAVING', 'DISTINCT',
+  'COUNT', 'SUM', 'AVG', 'MIN', 'MAX', 'BETWEEN', 'CASE', 'WHEN',
+  'THEN', 'ELSE', 'END', 'INTEGER', 'INT', 'TEXT', 'VARCHAR', 'REAL',
+  'FLOAT', 'DOUBLE', 'BOOLEAN', 'BOOL', 'BLOB', 'DATE', 'TIMESTAMP',
+  'AFTER', 'BEFORE', 'FOR', 'EACH', 'ROW', 'BEGIN',
+  'COMMIT', 'ROLLBACK', 'RENAME', 'TO', 'COLUMN',
+  'UNION', 'ALL', 'CAST', 'EXCEPT', 'INTERSECT',
+  'EXPLAIN',
+  'WITH', 'RECURSIVE', 'OVER', 'PARTITION', 'ROWS', 'RANGE', 'UNBOUNDED', 'PRECEDING', 'FOLLOWING', 'CURRENT',
+  'NULLS', 'FIRST', 'LAST',
+  'ROW_NUMBER', 'RANK', 'DENSE_RANK', 'NTILE', 'LAG', 'LEAD',
+  'GROUP_CONCAT', 'SEPARATOR',
+  'CONFLICT', 'DO', 'NOTHING', 'RETURNING', 'TRUNCATE',
+]);
+
+const OPERATORS = ['>=', '<=', '<>', '!=', '=', '<', '>', '||', '+', '/', '%'];
+
+function tokenize(sql) {
+  const tokens = [];
+  let i = 0;
+
+  while (i < sql.length) {
+    // Skip whitespace
+    if (/\s/.test(sql[i])) { i++; continue; }
+
+    // Skip comments
+    if (sql[i] === '-' && sql[i + 1] === '-') {
+      while (i < sql.length && sql[i] !== '\n') i++;
+      continue;
+    }
+
+    // String literal (single quotes)
+    if (sql[i] === "'") {
+      let val = '';
+      i++; // skip opening quote
+      while (i < sql.length) {
+        if (sql[i] === "'" && sql[i + 1] === "'") {
+          val += "'"; i += 2; // escaped quote
+        } else if (sql[i] === "'") {
+          break; // closing quote
+        } else {
+          val += sql[i]; i++;
+        }
+      }
+      i++; // skip closing quote
+      tokens.push({ type: 'STRING', value: val });
+      continue;
+    }
+
+    // Quoted identifier (double quotes)
+    if (sql[i] === '"') {
+      let val = '';
+      i++;
+      while (i < sql.length && sql[i] !== '"') { val += sql[i]; i++; }
+      i++;
+      tokens.push({ type: 'IDENTIFIER', value: val });
+      continue;
+    }
+
+    // Backtick-quoted identifier
+    if (sql[i] === '`') {
+      let val = '';
+      i++;
+      while (i < sql.length && sql[i] !== '`') { val += sql[i]; i++; }
+      i++;
+      tokens.push({ type: 'IDENTIFIER', value: val });
+      continue;
+    }
+
+    // Operators (check multi-char first)
+    let matchedOp = null;
+    for (const op of OPERATORS) {
+      if (sql.substring(i, i + op.length) === op) {
+        matchedOp = op; break;
+      }
+    }
+    if (matchedOp) {
+      tokens.push({ type: 'OPERATOR', value: matchedOp });
+      i += matchedOp.length;
+      continue;
+    }
+
+    // Symbols
+    if ('(),*.;'.includes(sql[i])) {
+      tokens.push({ type: 'SYMBOL', value: sql[i] });
+      i++;
+      continue;
+    }
+
+    // Numbers
+    if (/[0-9]/.test(sql[i]) || (sql[i] === '-' && i + 1 < sql.length && /[0-9]/.test(sql[i + 1]) && (tokens.length === 0 || ['OPERATOR', 'SYMBOL', 'KEYWORD'].includes(tokens[tokens.length - 1].type)))) {
+      let num = '';
+      if (sql[i] === '-') { num += '-'; i++; }
+      while (i < sql.length && /[0-9.]/.test(sql[i])) { num += sql[i]; i++; }
+      tokens.push({ type: 'NUMBER', value: num.includes('.') ? parseFloat(num) : parseInt(num, 10) });
+      continue;
+    }
+
+    // Words (keywords or identifiers)
+    if (/[a-zA-Z_]/.test(sql[i])) {
+      let word = '';
+      while (i < sql.length && /[a-zA-Z0-9_]/.test(sql[i])) { word += sql[i]; i++; }
+      const upper = word.toUpperCase();
+
+      if (upper === 'TRUE' || upper === 'FALSE') {
+        tokens.push({ type: 'BOOLEAN', value: upper === 'TRUE' });
+      } else if (upper === 'NULL') {
+        tokens.push({ type: 'NULL', value: null });
+      } else if (KEYWORDS.has(upper)) {
+        tokens.push({ type: 'KEYWORD', value: upper });
+      } else {
+        tokens.push({ type: 'IDENTIFIER', value: word });
+      }
+      continue;
+    }
+
+    // Minus sign not consumed as negative number — emit as operator
+    if (sql[i] === '-') {
+      tokens.push({ type: 'OPERATOR', value: '-' });
+      i++;
+      continue;
+    }
+
+    // Unknown character — skip
+    i++;
+  }
+
+  return tokens;
+}
+
+
+// ═══ src/gates/query/sql/parser-utils.js ═══
+/**
+ * SQL Parser Utilities — shared parsing functions.
+ * Every function takes (tokens, pos) and returns { result, pos }.
+ * Pure. Stateless. Used by all parse gates.
+ */
+
+/** Check if token at pos matches type and optionally value */
+function match(tokens, pos, type, value) {
+  if (pos >= tokens.length) return false;
+  const t = tokens[pos];
+  if (t.type !== type) return false;
+  if (value !== undefined && t.value !== value) return false;
+  return true;
+}
+
+/** Check if token at pos is a keyword with given value */
+function kw(tokens, pos, value) {
+  return match(tokens, pos, 'KEYWORD', value);
+}
+
+/** Check if token at pos is a symbol with given value */
+function sym(tokens, pos, value) {
+  return match(tokens, pos, 'SYMBOL', value);
+}
+
+/** Expect a specific token, throw if not found */
+function expect(tokens, pos, type, value) {
+  if (!match(tokens, pos, type, value)) {
+    const actual = pos < tokens.length ? `${tokens[pos].type}:${tokens[pos].value}` : 'EOF';
+    throw new Error(`Expected ${type}:${value}, got ${actual} at position ${pos}`);
+  }
+  return pos + 1;
+}
+
+/** Get value at pos */
+function val(tokens, pos) {
+  return tokens[pos]?.value;
+}
+
+/** Parse a column list: col1, col2, col3 or * */
+function parseColumnList(tokens, pos) {
+  const columns = [];
+
+  if (sym(tokens, pos, '*')) {
+    return { columns: ['*'], pos: pos + 1 };
+  }
+
+  while (pos < tokens.length) {
+    const col = parseSelectColumn(tokens, pos);
+    columns.push(col.column);
+    pos = col.pos;
+
+    if (sym(tokens, pos, ',')) {
+      pos++; // skip comma
+    } else {
+      break;
+    }
+  }
+
+  return { columns, pos };
+}
+
+/** Parse a single column expression in SELECT */
+function parseSelectColumn(tokens, pos) {
+  // Star
+  if (sym(tokens, pos, '*')) {
+    return { column: '*', pos: pos + 1 };
+  }
+
+  // Scalar subquery: (SELECT ...)
+  if (isSubquery(tokens, pos)) {
+    const sub = parseSubquery(tokens, pos);
+    let alias = 'subquery';
+    if (kw(tokens, sub.pos, 'AS')) { sub.pos++; alias = tokens[sub.pos].value; sub.pos++; }
+    return { column: { expr: { subquery: sub.tokens }, alias }, pos: sub.pos };
+  }
+
+  // Aggregate/Window functions
+  const aggFns = ['COUNT', 'SUM', 'AVG', 'MIN', 'MAX'];
+  const winFns = ['ROW_NUMBER', 'RANK', 'DENSE_RANK', 'NTILE', 'LAG', 'LEAD'];
+  const allSpecialFns = [...aggFns, ...winFns, 'GROUP_CONCAT'];
+  const tokVal = tokens[pos]?.value || '';
+
+  if (allSpecialFns.includes(tokVal) && sym(tokens, pos + 1, '(')) {
+    const fn = tokVal;
+    pos++; // skip fn name
+    pos = expect(tokens, pos, 'SYMBOL', '(');
+
+    let column = null;
+    let distinct = false;
+    let separator = ',';
+
+    if (sym(tokens, pos, '*')) { column = '*'; pos++; }
+    else if (sym(tokens, pos, ')')) { column = '*'; } // No args: ROW_NUMBER()
+    else {
+      if (kw(tokens, pos, 'DISTINCT')) { distinct = true; pos++; }
+      column = tokens[pos].value; pos++;
+      // Handle qualified column: table.column
+      if (sym(tokens, pos, '.')) { pos++; column = column + '.' + tokens[pos].value; pos++; }
+      if (fn === 'GROUP_CONCAT' && kw(tokens, pos, 'SEPARATOR')) { pos++; separator = tokens[pos].value; pos++; }
+    }
+    pos = expect(tokens, pos, 'SYMBOL', ')');
+
+    // Check for OVER → window function
+    if (kw(tokens, pos, 'OVER')) {
+      pos++;
+      const over = parseWindowSpec(tokens, pos);
+      pos = over.pos;
+      let alias = fn.toLowerCase();
+      if (kw(tokens, pos, 'AS')) { pos++; alias = tokens[pos].value; pos++; }
+      return { column: { window: { fn, column, distinct, over: over.spec }, alias }, pos };
+    }
+
+    // Regular aggregate
+    let alias = `${fn.toLowerCase()}_${column}`;
+    if (kw(tokens, pos, 'AS')) { pos++; alias = tokens[pos].value; pos++; }
+
+    if (fn === 'GROUP_CONCAT') {
+      return { column: { aggregate: { fn: 'GROUP_CONCAT', column, distinct, separator }, alias }, pos };
+    }
+    return { column: { aggregate: { fn, column, distinct }, alias }, pos };
+  }
+
+  // General expression
+  const exprResult = parseExpression(tokens, pos);
+  let expr = exprResult.expr;
+  pos = exprResult.pos;
+
+  let alias = null;
+  if (kw(tokens, pos, 'AS')) { pos++; alias = tokens[pos].value; pos++; }
+
+  if (typeof expr === 'string' && alias === null) return { column: expr, pos };
+  if (alias === null) alias = typeof expr === 'string' ? expr : `expr_${pos}`;
+  return { column: { expr, alias }, pos };
+}
+
+/** Parse a WHERE clause into a condition tree */
+function parseWhereClause(tokens, pos) {
+  return parseOrExpr(tokens, pos);
+}
+
+function parseOrExpr(tokens, pos) {
+  let result = parseAndExpr(tokens, pos);
+  let left = result.condition;
+  pos = result.pos;
+
+  while (kw(tokens, pos, 'OR')) {
+    pos++;
+    const right = parseAndExpr(tokens, pos);
+    left = { or: [left, right.condition] };
+    pos = right.pos;
+  }
+
+  return { condition: left, pos };
+}
+
+function parseAndExpr(tokens, pos) {
+  let result = parseNotExpr(tokens, pos);
+  let left = result.condition;
+  pos = result.pos;
+
+  while (kw(tokens, pos, 'AND')) {
+    pos++;
+    const right = parseNotExpr(tokens, pos);
+    left = { and: [left, right.condition] };
+    pos = right.pos;
+  }
+
+  return { condition: left, pos };
+}
+
+function parseNotExpr(tokens, pos) {
+  if (kw(tokens, pos, 'NOT')) {
+    pos++;
+    // NOT EXISTS
+    if (kw(tokens, pos, 'EXISTS') && isSubquery(tokens, pos + 1)) {
+      pos++; // skip EXISTS
+      const sub = parseSubquery(tokens, pos);
+      return { condition: { not: { exists: true, subquery: sub.tokens } }, pos: sub.pos };
+    }
+    const result = parseComparison(tokens, pos);
+    return { condition: { not: result.condition }, pos: result.pos };
+  }
+  // EXISTS (SELECT ...)
+  if (kw(tokens, pos, 'EXISTS') && isSubquery(tokens, pos + 1)) {
+    pos++; // skip EXISTS
+    const sub = parseSubquery(tokens, pos);
+    return { condition: { exists: true, subquery: sub.tokens }, pos: sub.pos };
+  }
+  return parseComparison(tokens, pos);
+}
+
+function parseComparison(tokens, pos) {
+  // Parenthesized condition or subquery
+  if (sym(tokens, pos, '(')) {
+    if (kw(tokens, pos + 1, 'SELECT')) {
+      // Scalar subquery comparison: (SELECT ...) = value
+      const sub = parseSubquery(tokens, pos);
+      if (tokens[sub.pos] && tokens[sub.pos].type === 'OPERATOR') {
+        const op = tokens[sub.pos].value;
+        pos = sub.pos + 1;
+        const rightResult = parseExpression(tokens, pos);
+        return {
+          condition: { leftExpr: { subquery: sub.tokens }, op, rightExpr: rightResult.expr },
+          pos: rightResult.pos,
+        };
+      }
+      // Standalone scalar subquery in boolean context
+      return { condition: { exists: true, subquery: sub.tokens }, pos: sub.pos };
+    }
+    pos++;
+    const result = parseOrExpr(tokens, pos);
+    if (sym(tokens, result.pos, ')')) {
+      return { condition: result.condition, pos: result.pos + 1 };
+    }
+    return result;
+  }
+
+  // Parse left side as expression
+  const leftResult = parseExpression(tokens, pos);
+  const leftExpr = leftResult.expr;
+  pos = leftResult.pos;
+  const isSimpleColumn = typeof leftExpr === 'string';
+  const column = isSimpleColumn ? leftExpr : null;
+
+  // IS NULL / IS NOT NULL
+  if (kw(tokens, pos, 'IS')) {
+    pos++;
+    if (kw(tokens, pos, 'NOT')) {
+      pos++; pos++; // skip NOT NULL
+      return isSimpleColumn
+        ? { condition: { column, op: 'is_not_null' }, pos }
+        : { condition: { leftExpr, op: 'is_not_null' }, pos };
+    }
+    pos++; // skip NULL
+    return isSimpleColumn
+      ? { condition: { column, op: 'is_null' }, pos }
+      : { condition: { leftExpr, op: 'is_null' }, pos };
+  }
+
+  // NOT IN / NOT LIKE / NOT ILIKE / NOT BETWEEN
+  if (kw(tokens, pos, 'NOT')) {
+    pos++;
+    if (kw(tokens, pos, 'IN')) {
+      pos++;
+      if (isSubquery(tokens, pos)) {
+        const sub = parseSubquery(tokens, pos);
+        const cond = isSimpleColumn
+          ? { column, op: 'in', subquery: sub.tokens }
+          : { leftExpr, op: 'in', subquery: sub.tokens };
+        return { condition: { not: cond }, pos: sub.pos };
+      }
+      const list = parseInList(tokens, pos);
+      const cond = isSimpleColumn
+        ? { column, op: 'in', value: list.values }
+        : { leftExpr, op: 'in', value: list.values };
+      return { condition: { not: cond }, pos: list.pos };
+    }
+    if (kw(tokens, pos, 'LIKE') || kw(tokens, pos, 'ILIKE')) {
+      const opType = tokens[pos].value.toLowerCase();
+      pos++;
+      const pattern = tokens[pos].value; pos++;
+      const cond = isSimpleColumn
+        ? { column, op: opType, value: pattern }
+        : { leftExpr, op: opType, value: pattern };
+      return { condition: { not: cond }, pos };
+    }
+    if (kw(tokens, pos, 'BETWEEN')) {
+      pos++;
+      const low = parseLiteralValue(tokens, pos); pos = low.pos;
+      pos++; // skip AND
+      const high = parseLiteralValue(tokens, pos); pos = high.pos;
+      if (isSimpleColumn) {
+        return { condition: { not: { and: [
+          { column, op: '>=', value: low.value },
+          { column, op: '<=', value: high.value }
+        ]}}, pos };
+      }
+      return { condition: { not: { and: [
+        { leftExpr, op: '>=', rightExpr: { literal: low.value } },
+        { leftExpr, op: '<=', rightExpr: { literal: high.value } }
+      ]}}, pos };
+    }
+  }
+
+  // IN
+  if (kw(tokens, pos, 'IN')) {
+    pos++;
+    if (isSubquery(tokens, pos)) {
+      const sub = parseSubquery(tokens, pos);
+      const cond = isSimpleColumn
+        ? { column, op: 'in', subquery: sub.tokens }
+        : { leftExpr, op: 'in', subquery: sub.tokens };
+      return { condition: cond, pos: sub.pos };
+    }
+    const list = parseInList(tokens, pos);
+    const cond = isSimpleColumn
+      ? { column, op: 'in', value: list.values }
+      : { leftExpr, op: 'in', value: list.values };
+    return { condition: cond, pos: list.pos };
+  }
+
+  // LIKE
+  // LIKE / ILIKE
+  if (kw(tokens, pos, 'LIKE') || kw(tokens, pos, 'ILIKE')) {
+    const opType = tokens[pos].value.toLowerCase();
+    pos++;
+    const pattern = tokens[pos].value; pos++;
+    const cond = isSimpleColumn
+      ? { column, op: opType, value: pattern }
+      : { leftExpr, op: opType, value: pattern };
+    return { condition: cond, pos };
+  }
+
+  // BETWEEN
+  if (kw(tokens, pos, 'BETWEEN')) {
+    pos++;
+    const low = parseLiteralValue(tokens, pos); pos = low.pos;
+    pos++; // skip AND
+    const high = parseLiteralValue(tokens, pos); pos = high.pos;
+    if (isSimpleColumn) {
+      return { condition: { and: [
+        { column, op: '>=', value: low.value },
+        { column, op: '<=', value: high.value }
+      ]}, pos };
+    }
+    return { condition: { and: [
+      { leftExpr, op: '>=', rightExpr: { literal: low.value } },
+      { leftExpr, op: '<=', rightExpr: { literal: high.value } }
+    ]}, pos };
+  }
+
+  // Standard comparison
+  const op = tokens[pos].value; pos++;
+  const rightResult = parseExpression(tokens, pos);
+  const rightExpr = rightResult.expr;
+  pos = rightResult.pos;
+
+  // Backward-compatible format for simple cases
+  const isSimpleRight = typeof rightExpr === 'object' && rightExpr !== null && rightExpr.literal !== undefined;
+  if (isSimpleColumn && isSimpleRight) {
+    return { condition: { column, op, value: rightExpr.literal }, pos };
+  }
+
+  return { condition: { leftExpr: isSimpleColumn ? column : leftExpr, op, rightExpr }, pos };
+}
+
+function parseInList(tokens, pos) {
+  pos = expect(tokens, pos, 'SYMBOL', '(');
+  const values = [];
+  while (!sym(tokens, pos, ')')) {
+    const v = parseLiteralValue(tokens, pos);
+    values.push(v.value);
+    pos = v.pos;
+    if (sym(tokens, pos, ',')) pos++;
+  }
+  pos++; // skip )
+  return { values, pos };
+}
+
+/** Parse a literal value: number, string, boolean, null */
+function parseLiteralValue(tokens, pos) {
+  const t = tokens[pos];
+  if (t.type === 'NUMBER') return { value: t.value, pos: pos + 1 };
+  if (t.type === 'STRING') return { value: t.value, pos: pos + 1 };
+  if (t.type === 'BOOLEAN') return { value: t.value, pos: pos + 1 };
+  if (t.type === 'NULL') return { value: null, pos: pos + 1 };
+  if (t.type === 'KEYWORD' && t.value === 'DEFAULT') return { value: undefined, pos: pos + 1 };
+  // Negative number
+  if (t.type === 'OPERATOR' && t.value === '-' && tokens[pos + 1]?.type === 'NUMBER') {
+    return { value: -tokens[pos + 1].value, pos: pos + 2 };
+  }
+  throw new Error(`Expected literal value, got ${t.type}:${t.value} at position ${pos}`);
+}
+
+/** Parse ORDER BY clause */
+function parseOrderBy(tokens, pos) {
+  const order = [];
+  while (pos < tokens.length) {
+    let column = tokens[pos].value;
+    pos++;
+    // Handle qualified: table.column
+    if (sym(tokens, pos, '.')) { pos++; column = column + '.' + tokens[pos].value; pos++; }
+    let direction = 'asc';
+    if (kw(tokens, pos, 'ASC')) { direction = 'asc'; pos++; }
+    else if (kw(tokens, pos, 'DESC')) { direction = 'desc'; pos++; }
+    const entry = { column, direction };
+    if (kw(tokens, pos, 'NULLS')) {
+      pos++;
+      if (kw(tokens, pos, 'FIRST')) { entry.nulls = 'first'; pos++; }
+      else if (kw(tokens, pos, 'LAST')) { entry.nulls = 'last'; pos++; }
+    }
+    order.push(entry);
+    if (sym(tokens, pos, ',')) { pos++; } else { break; }
+  }
+  return { order, pos };
+}
+
+/** Parse a table reference with optional alias */
+function parseTableRef(tokens, pos) {
+  const table = tokens[pos].value;
+  pos++;
+  let alias = null;
+  if (kw(tokens, pos, 'AS')) {
+    pos++;
+    alias = tokens[pos].value;
+    pos++;
+  } else if (tokens[pos]?.type === 'IDENTIFIER' && !kw(tokens, pos, 'WHERE') && !kw(tokens, pos, 'ON') && !kw(tokens, pos, 'SET') && !kw(tokens, pos, 'ORDER') && !kw(tokens, pos, 'GROUP') && !kw(tokens, pos, 'LIMIT') && !kw(tokens, pos, 'JOIN') && !kw(tokens, pos, 'INNER') && !kw(tokens, pos, 'LEFT') && !kw(tokens, pos, 'RIGHT') && !kw(tokens, pos, 'FULL') && !kw(tokens, pos, 'CROSS') && !kw(tokens, pos, 'HAVING')) {
+    alias = tokens[pos].value;
+    pos++;
+  }
+  return { table, alias, pos };
+}
+
+/** Parse a comma-separated value list: (val1, val2, ...) */
+function parseValueList(tokens, pos) {
+  pos = expect(tokens, pos, 'SYMBOL', '(');
+  const values = [];
+  const exprs = [];
+  let hasExprs = false;
+  while (!sym(tokens, pos, ')')) {
+    const exprResult = parseExpression(tokens, pos);
+    const expr = exprResult.expr;
+    pos = exprResult.pos;
+    if (typeof expr === 'object' && expr !== null && expr.literal !== undefined) {
+      values.push(expr.literal);
+      exprs.push(expr);
+    } else {
+      values.push(null);
+      exprs.push(expr);
+      hasExprs = true;
+    }
+    if (sym(tokens, pos, ',')) pos++;
+  }
+  pos++; // skip )
+  const result = { values, pos };
+  if (hasExprs) result.exprs = exprs;
+  return result;
+}
+
+/** Parse a parenthesized identifier list: (col1, col2) */
+function parseIdentList(tokens, pos) {
+  pos = expect(tokens, pos, 'SYMBOL', '(');
+  const idents = [];
+  while (!sym(tokens, pos, ')')) {
+    idents.push(tokens[pos].value);
+    pos++;
+    if (sym(tokens, pos, ',')) pos++;
+  }
+  pos++; // skip )
+  return { idents, pos };
+}
+
+/** Map SQL type names to normalized types */
+function normalizeType(typeName) {
+  const upper = typeName.toUpperCase();
+  const map = {
+    'INTEGER': 'integer', 'INT': 'integer', 'BIGINT': 'integer', 'SMALLINT': 'integer',
+    'TEXT': 'text', 'VARCHAR': 'text', 'CHAR': 'text', 'STRING': 'text',
+    'REAL': 'real', 'FLOAT': 'real', 'DOUBLE': 'real', 'NUMERIC': 'real', 'DECIMAL': 'real',
+    'BOOLEAN': 'boolean', 'BOOL': 'boolean',
+    'BLOB': 'blob',
+    'DATE': 'date', 'TIMESTAMP': 'timestamp',
+  };
+  return map[upper] || 'text';
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SQL Expression Parser
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const SQL_FUNCTIONS = ['UPPER','LOWER','LENGTH','ABS','ROUND','CONCAT','SUBSTR','SUBSTRING',
+  'IFNULL','NULLIF','REPLACE','TRIM','LTRIM','RTRIM','COALESCE','CAST',
+  'LEFT','RIGHT','REVERSE','REPEAT','LPAD','RPAD','POSITION','INSTR',
+  'CHAR_LENGTH','CHARACTER_LENGTH','STARTS_WITH','ENDS_WITH',
+  'CEIL','CEILING','FLOOR','POWER','POW','SQRT','MOD','SIGN',
+  'LOG','LN','EXP','PI','RANDOM','RAND',
+  'TYPEOF','GREATEST','LEAST',
+  'IIF','DATE','TIME','DATETIME','STRFTIME','NOW',
+  'CURRENT_TIMESTAMP','CURRENT_DATE','CURRENT_TIME',
+  'MAX','MIN','SUM','AVG','COUNT'];
+
+function isSQLFunction(name) {
+  return SQL_FUNCTIONS.includes(name.toUpperCase());
+}
+
+function parseExpression(tokens, pos) {
+  let result = parseAdditiveExpr(tokens, pos);
+  let expr = result.expr;
+  pos = result.pos;
+  while (pos < tokens.length && tokens[pos]?.value === '||') {
+    pos++;
+    const right = parseAdditiveExpr(tokens, pos);
+    expr = { fn: 'CONCAT', args: [expr, right.expr] };
+    pos = right.pos;
+  }
+  return { expr, pos };
+}
+
+function parseAdditiveExpr(tokens, pos) {
+  let result = parseMultiplicativeExpr(tokens, pos);
+  let expr = result.expr;
+  pos = result.pos;
+  while (pos < tokens.length && ['+', '-'].includes(tokens[pos]?.value) && tokens[pos]?.type === 'OPERATOR') {
+    const op = tokens[pos].value; pos++;
+    const right = parseMultiplicativeExpr(tokens, pos);
+    expr = { op, left: expr, right: right.expr };
+    pos = right.pos;
+  }
+  return { expr, pos };
+}
+
+function parseMultiplicativeExpr(tokens, pos) {
+  let result = parseUnaryExpr(tokens, pos);
+  let expr = result.expr;
+  pos = result.pos;
+  while (pos < tokens.length && ['*', '/', '%'].includes(tokens[pos]?.value)) {
+    if (tokens[pos].type === 'SYMBOL' && tokens[pos].value === '*') {
+      if (pos > 0) {
+        const prevType = tokens[pos - 1]?.type || '';
+        if (!['NUMBER', 'IDENTIFIER', 'SYMBOL'].includes(prevType)) break;
+        if (prevType === 'SYMBOL' && tokens[pos - 1].value !== ')') break;
+      } else break;
+    }
+    const op = tokens[pos].value; pos++;
+    const right = parseUnaryExpr(tokens, pos);
+    expr = { op, left: expr, right: right.expr };
+    pos = right.pos;
+  }
+  return { expr, pos };
+}
+
+function parseUnaryExpr(tokens, pos) {
+  if (pos < tokens.length && tokens[pos]?.value === '-' && tokens[pos]?.type === 'OPERATOR') {
+    pos++;
+    const result = parseUnaryExpr(tokens, pos);
+    if (typeof result.expr === 'object' && result.expr?.literal !== undefined && typeof result.expr.literal === 'number') {
+      return { expr: { literal: -result.expr.literal }, pos: result.pos };
+    }
+    return { expr: { op: '-', left: { literal: 0 }, right: result.expr }, pos: result.pos };
+  }
+  return parseAtomExpr(tokens, pos);
+}
+
+function parseAtomExpr(tokens, pos) {
+  if (pos >= tokens.length) throw new Error(`Unexpected end of expression at position ${pos}`);
+  const token = tokens[pos];
+
+  if (kw(tokens, pos, 'CASE')) return parseCaseExpr(tokens, pos);
+
+  if (sym(tokens, pos, '(')) {
+    // Scalar subquery: (SELECT ...)
+    if (isSubquery(tokens, pos)) {
+      const sub = parseSubquery(tokens, pos);
+      return { expr: { subquery: sub.tokens }, pos: sub.pos };
+    }
+    pos++;
+    const result = parseExpression(tokens, pos);
+    if (sym(tokens, result.pos, ')')) return { expr: result.expr, pos: result.pos + 1 };
+    return result;
+  }
+
+  if (token.type === 'NUMBER') {
+    // Tokenizer already converts to proper numeric type
+    const val = typeof token.value === 'string'
+      ? (token.value.includes('.') ? parseFloat(token.value) : parseInt(token.value, 10))
+      : token.value;
+    return { expr: { literal: val }, pos: pos + 1 };
+  }
+  if (token.type === 'STRING') return { expr: { literal: token.value }, pos: pos + 1 };
+  if (token.type === 'BOOLEAN') return { expr: { literal: token.value === 'TRUE' || token.value === true }, pos: pos + 1 };
+  if (token.type === 'NULL') return { expr: { literal: null }, pos: pos + 1 };
+
+  // IIF(condition, then, else) → CASE WHEN condition THEN then ELSE else END
+  if ((token.value || '').toUpperCase() === 'IIF' && sym(tokens, pos + 1, '(')) {
+    pos += 2; // skip IIF(
+    const condResult = parseWhereClause(tokens, pos);
+    const cond = condResult.condition;
+    pos = condResult.pos;
+    pos++; // skip comma
+    const thenResult = parseExpression(tokens, pos);
+    pos = thenResult.pos;
+    pos++; // skip comma
+    const elseResult = parseExpression(tokens, pos);
+    pos = elseResult.pos;
+    pos++; // skip )
+    return { expr: { case: [{ when: cond, then: thenResult.expr }], else: elseResult.expr }, pos };
+  }
+
+  if ((token.type === 'KEYWORD' || token.type === 'IDENTIFIER') && isSQLFunction(token.value) && sym(tokens, pos + 1, '(')) {
+    return parseFunctionCall(token.value, tokens, pos + 1);
+  }
+
+  if (token.type === 'IDENTIFIER' || token.type === 'KEYWORD') {
+    if (sym(tokens, pos + 1, '.')) {
+      return { expr: `${token.value}.${tokens[pos + 2]?.value || ''}`, pos: pos + 3 };
+    }
+    return { expr: token.value, pos: pos + 1 };
+  }
+
+  if (sym(tokens, pos, '*')) return { expr: '*', pos: pos + 1 };
+
+  throw new Error(`Unexpected token '${token.value}' (${token.type}) at position ${pos}`);
+}
+
+function parseCaseExpr(tokens, pos) {
+  pos++; // skip CASE
+  const branches = [];
+  let elseExpr = undefined;
+  while (kw(tokens, pos, 'WHEN')) {
+    pos++;
+    const condition = parseWhereClause(tokens, pos);
+    pos = condition.pos;
+    if (kw(tokens, pos, 'THEN')) pos++;
+    const thenResult = parseExpression(tokens, pos);
+    pos = thenResult.pos;
+    branches.push({ when: condition.condition, then: thenResult.expr });
+  }
+  if (kw(tokens, pos, 'ELSE')) {
+    pos++;
+    const elseResult = parseExpression(tokens, pos);
+    elseExpr = elseResult.expr;
+    pos = elseResult.pos;
+  }
+  if (kw(tokens, pos, 'END')) pos++;
+  const result = { case: branches };
+  if (elseExpr !== undefined) result.else = elseExpr;
+  return { expr: result, pos };
+}
+
+function parseFunctionCall(fn, tokens, pos) {
+  pos = expect(tokens, pos, 'SYMBOL', '(');
+  const args = [];
+  if (fn.toUpperCase() === 'CAST') {
+    const exprResult = parseExpression(tokens, pos);
+    args.push(exprResult.expr);
+    pos = exprResult.pos;
+    if (kw(tokens, pos, 'AS')) { pos++; args.push({ literal: normalizeType(tokens[pos].value) }); pos++; }
+    pos = expect(tokens, pos, 'SYMBOL', ')');
+    return { expr: { fn: fn.toUpperCase(), args }, pos };
+  }
+  if (fn.toUpperCase() === 'COUNT' && sym(tokens, pos, '*')) {
+    pos++;
+    pos = expect(tokens, pos, 'SYMBOL', ')');
+    return { expr: { fn: 'COUNT', args: [{ literal: '*' }] }, pos };
+  }
+  if (!sym(tokens, pos, ')')) {
+    while (true) {
+      const argResult = parseExpression(tokens, pos);
+      args.push(argResult.expr);
+      pos = argResult.pos;
+      if (sym(tokens, pos, ',')) { pos++; } else break;
+    }
+  }
+  pos = expect(tokens, pos, 'SYMBOL', ')');
+  return { expr: { fn: fn.toUpperCase(), args }, pos };
+}
+
+function isSubquery(tokens, pos) {
+  return sym(tokens, pos, '(') && kw(tokens, pos + 1, 'SELECT');
+}
+
+function parseSubquery(tokens, pos) {
+  pos++; // skip (
+  let depth = 1;
+  const subTokens = [];
+  while (pos < tokens.length && depth > 0) {
+    if (sym(tokens, pos, '(')) depth++;
+    if (sym(tokens, pos, ')')) { depth--; if (depth === 0) break; }
+    subTokens.push(tokens[pos]);
+    pos++;
+  }
+  pos++; // skip )
+  return { tokens: subTokens, pos };
+}
+
+/** Parse OVER (PARTITION BY ... ORDER BY ...) window specification */
+function parseWindowSpec(tokens, pos) {
+  const spec = { partitionBy: null, orderBy: null };
+  pos = expect(tokens, pos, 'SYMBOL', '(');
+
+  // Empty window: OVER ()
+  if (sym(tokens, pos, ')')) return { spec, pos: pos + 1 };
+
+  // PARTITION BY
+  if (kw(tokens, pos, 'PARTITION') && kw(tokens, pos + 1, 'BY')) {
+    pos += 2;
+    spec.partitionBy = [];
+    while (pos < tokens.length && !kw(tokens, pos, 'ORDER') && !sym(tokens, pos, ')')) {
+      spec.partitionBy.push(tokens[pos].value);
+      pos++;
+      if (sym(tokens, pos, ',')) pos++;
+    }
+  }
+
+  // ORDER BY
+  if (kw(tokens, pos, 'ORDER') && kw(tokens, pos + 1, 'BY')) {
+    pos += 2;
+    spec.orderBy = [];
+    while (pos < tokens.length && !sym(tokens, pos, ')')) {
+      const col = tokens[pos].value; pos++;
+      let dir = 'asc';
+      if (kw(tokens, pos, 'ASC')) { dir = 'asc'; pos++; }
+      else if (kw(tokens, pos, 'DESC')) { dir = 'desc'; pos++; }
+      spec.orderBy.push({ column: col, direction: dir });
+      if (sym(tokens, pos, ',')) pos++;
+    }
+  }
+
+  pos = expect(tokens, pos, 'SYMBOL', ')');
+  return { spec, pos };
+}
+
+
+// ═══ src/gates/query/sql/SQLDispatchGate.js ═══
+/**
+ * SQLDispatchGate — routes SQL to the appropriate parse gate.
+ * Examines first tokens to determine statement type.
+ */
+
+class SQLDispatchGate extends PureGate {
+  constructor() { super('sql'); }
+
+  transform(event) {
+    const sql = event.data.sql.trim();
+    const tokens = tokenize(sql);
+    if (tokens.length === 0) {
+      return new Event('error', { message: 'Empty SQL statement', source: 'sql' });
+    }
+
+    const first = tokens[0].value;
+    const second = tokens[1]?.value;
+
+    if (first === 'CREATE' && second === 'TABLE') return new Event('create_table_parse', { sql, tokens });
+    if (first === 'DROP' && second === 'TABLE') return new Event('drop_table_parse', { sql, tokens });
+    if (first === 'INSERT') return new Event('insert_parse', { sql, tokens });
+    if (first === 'SELECT') return new Event('select_parse', { sql, tokens });
+    if (first === 'UPDATE') return new Event('update_parse', { sql, tokens });
+    if (first === 'DELETE') return new Event('delete_parse', { sql, tokens });
+    if (first === 'CREATE' && second === 'UNIQUE') return new Event('index_create_parse', { sql, tokens });
+    if (first === 'CREATE' && second === 'INDEX') return new Event('index_create_parse', { sql, tokens });
+    if (first === 'DROP' && second === 'INDEX') return new Event('index_drop_parse', { sql, tokens });
+    if (first === 'CREATE' && second === 'VIEW') return new Event('view_create_parse', { sql, tokens });
+    if (first === 'DROP' && second === 'VIEW') return new Event('view_drop_parse', { sql, tokens });
+    if (first === 'CREATE' && second === 'TRIGGER') return new Event('trigger_create_parse', { sql, tokens });
+    if (first === 'DROP' && second === 'TRIGGER') return new Event('trigger_drop_parse', { sql, tokens });
+    if (first === 'ALTER' && second === 'TABLE') {
+      let addIsConstraint = false, dropIsConstraint = false;
+      let addIsColumn = false, dropIsColumn = false;
+      let hasRename = false;
+      for (let i = 0; i < tokens.length - 1; i++) {
+        if (tokens[i].value === 'ADD' && tokens[i + 1]?.value === 'CONSTRAINT') addIsConstraint = true;
+        if (tokens[i].value === 'DROP' && tokens[i + 1]?.value === 'CONSTRAINT') dropIsConstraint = true;
+        if (tokens[i].value === 'ADD' && !addIsConstraint) addIsColumn = true;
+        if (tokens[i].value === 'DROP' && !dropIsConstraint) dropIsColumn = true;
+        if (tokens[i].value === 'RENAME') hasRename = true;
+      }
+      if (addIsConstraint) return new Event('constraint_create_parse', { sql, tokens });
+      if (dropIsConstraint) return new Event('constraint_drop_parse', { sql, tokens });
+      if (hasRename) return new Event('rename_table_parse', { sql, tokens });
+      if (addIsColumn) return new Event('alter_table_add_column_parse', { sql, tokens });
+      if (dropIsColumn) return new Event('alter_table_drop_column_parse', { sql, tokens });
+    }
+
+    // Transaction support
+    if (first === 'BEGIN') return new Event('transaction_begin', {});
+    if (first === 'COMMIT') return new Event('transaction_commit', {});
+    if (first === 'ROLLBACK') return new Event('transaction_rollback', {});
+
+    // TRUNCATE TABLE
+    if (first === 'TRUNCATE') {
+      let pos = 1;
+      if (kw(tokens, pos, 'TABLE')) pos++;
+      const table = tokens[pos]?.value || '';
+      return new Event('delete_execute', { table, where: null });
+    }
+
+    // WITH ... AS (Common Table Expressions)
+    if (first === 'WITH') {
+      const ctes = {};
+      let pos = 1;
+      let recursive = false;
+      if (kw(tokens, pos, 'RECURSIVE')) { recursive = true; pos++; }
+      const cteColumns = {};
+      while (pos < tokens.length) {
+        const cteName = tokens[pos].value;
+        pos++;
+        // Optional column list: name(col1, col2, ...)
+        let cols = null;
+        if (sym(tokens, pos, '(')) {
+          const identResult = parseIdentList(tokens, pos);
+          cols = identResult.idents;
+          pos = identResult.pos;
+        }
+        if (cols) cteColumns[cteName] = cols;
+        if (kw(tokens, pos, 'AS')) pos++;
+        if (sym(tokens, pos, '(')) {
+          const sub = parseSubquery(tokens, pos);
+          ctes[cteName] = sub.tokens;
+          pos = sub.pos;
+        }
+        if (sym(tokens, pos, ',')) { pos++; continue; }
+        break;
+      }
+      const mainTokens = tokens.slice(pos);
+      if (mainTokens.length > 0 && mainTokens[0].value === 'SELECT') {
+        const data = { sql, tokens: mainTokens, ctes };
+        if (recursive) data.recursive = true;
+        if (Object.keys(cteColumns).length > 0) data.cteColumns = cteColumns;
+        return new Event('select_parse', data);
+      }
+      return new Event('error', { message: 'WITH must be followed by SELECT', source: 'sql' });
+    }
+
+    // EXPLAIN
+    if (first === 'EXPLAIN') {
+      const innerTokens = tokens.slice(1);
+      return new Event('explain', { sql: innerTokens.map(t => t.value).join(' '), tokens: innerTokens });
+    }
+
+    return new Event('error', { message: `Unrecognized SQL: ${sql}`, source: 'sql' });
+  }
+}
+
+
+// ═══ src/gates/query/sql/CreateTableParseGate.js ═══
+
+class CreateTableParseGate extends PureGate {
+  constructor() { super('create_table_parse'); }
+
+  transform(event) {
+    const tokens = event.data.tokens;
+    let pos = 0;
+
+    // CREATE TABLE [IF NOT EXISTS] name
+    pos++; // CREATE
+    pos++; // TABLE
+    let ifNotExists = false;
+    if (kw(tokens, pos, 'IF')) { pos += 3; ifNotExists = true; } // IF NOT EXISTS
+
+    const table = tokens[pos].value;
+    pos++;
+
+    // CREATE TABLE ... AS SELECT ...
+    if (kw(tokens, pos, 'AS')) {
+      pos++; // skip AS
+      const selectTokens = tokens.slice(pos);
+      return new Event('create_table_as_select', { table, selectTokens, ifNotExists });
+    }
+
+    // ( column_defs )
+    pos++; // (
+    const columns = [];
+
+    while (!sym(tokens, pos, ')') && pos < tokens.length) {
+      // Skip table-level PRIMARY KEY(...)
+      if (kw(tokens, pos, 'PRIMARY')) {
+        while (pos < tokens.length && !sym(tokens, pos, ')')) pos++;
+        if (sym(tokens, pos, ')') && tokens[pos + 1]?.type !== 'SYMBOL') break;
+        // if nested, skip the inner close paren
+        pos++;
+        if (sym(tokens, pos, ',')) pos++;
+        continue;
+      }
+
+      const colName = tokens[pos].value;
+      pos++;
+
+      let type = 'text';
+      if (pos < tokens.length && tokens[pos].type === 'KEYWORD' && ['INTEGER', 'INT', 'TEXT', 'VARCHAR', 'REAL', 'FLOAT', 'DOUBLE', 'BOOLEAN', 'BOOL', 'BLOB', 'DATE', 'TIMESTAMP', 'BIGINT', 'SMALLINT', 'NUMERIC', 'DECIMAL', 'CHAR', 'STRING'].includes(tokens[pos].value)) {
+        type = normalizeType(tokens[pos].value);
+        pos++;
+        // Skip length specifiers: VARCHAR(255)
+        if (sym(tokens, pos, '(')) {
+          while (!sym(tokens, pos, ')') && pos < tokens.length) pos++;
+          pos++; // skip )
+        }
+      }
+
+      let nullable = true;
+      let defaultVal = null;
+
+      // Parse column constraints
+      while (pos < tokens.length && !sym(tokens, pos, ',') && !sym(tokens, pos, ')')) {
+        if (kw(tokens, pos, 'NOT') && (kw(tokens, pos + 1, 'NULL') || match(tokens, pos + 1, 'NULL'))) {
+          nullable = false;
+          pos += 2;
+        } else if (kw(tokens, pos, 'PRIMARY') && kw(tokens, pos + 1, 'KEY')) {
+          nullable = false;
+          pos += 2;
+        } else if (kw(tokens, pos, 'DEFAULT')) {
+          pos++;
+          const lit = parseLiteralValue(tokens, pos);
+          defaultVal = lit.value;
+          pos = lit.pos;
+        } else if (kw(tokens, pos, 'UNIQUE') || kw(tokens, pos, 'CHECK') || kw(tokens, pos, 'REFERENCES') || kw(tokens, pos, 'NULL')) {
+          pos++; // skip constraint keywords
+          if (sym(tokens, pos, '(')) { // skip parenthesized args
+            while (!sym(tokens, pos, ')') && pos < tokens.length) pos++;
+            pos++;
+          }
+        } else {
+          pos++;
+        }
+      }
+
+      columns.push({ name: colName, type, nullable, default: defaultVal !== undefined ? defaultVal : null });
+      if (sym(tokens, pos, ',')) pos++;
+    }
+
+    return new Event('create_table_execute', { table, columns, ifNotExists });
+  }
+}
+
+
+// ═══ src/gates/query/sql/DropTableParseGate.js ═══
+
+class DropTableParseGate extends PureGate {
+  constructor() { super('drop_table_parse'); }
+
+  transform(event) {
+    const tokens = event.data.tokens;
+    let pos = 2; // skip DROP TABLE
+
+    let ifExists = false;
+    if (kw(tokens, pos, 'IF')) {
+      ifExists = true;
+      pos += 2; // skip IF EXISTS
+    }
+
+    const table = tokens[pos].value;
+    return new Event('drop_table_execute', { table, ifExists });
+  }
+}
+
+
+// ═══ src/gates/query/sql/InsertParseGate.js ═══
+
+class InsertParseGate extends PureGate {
+  constructor() { super('insert_parse'); }
+
+  transform(event) {
+    const tokens = event.data.tokens;
+    let pos = 1; // skip INSERT
+
+    // INTO
+    if (kw(tokens, pos, 'INTO')) pos++;
+
+    const table = tokens[pos].value;
+    pos++;
+
+    // Optional column list
+    let columns = null;
+    if (sym(tokens, pos, '(')) {
+      const result = parseIdentList(tokens, pos);
+      columns = result.idents;
+      pos = result.pos;
+    }
+
+    // VALUES, SELECT, or DEFAULT VALUES
+    if (kw(tokens, pos, 'DEFAULT') && kw(tokens, pos + 1, 'VALUES')) {
+      return new Event('insert_execute', { table, row: {} });
+    }
+
+    if (kw(tokens, pos, 'SELECT')) {
+      const selectTokens = tokens.slice(pos);
+      return new Event('insert_select', { table, columns, selectTokens });
+    }
+
+    if (kw(tokens, pos, 'VALUES')) pos++;
+
+    const allRows = [];
+    while (pos < tokens.length && sym(tokens, pos, '(')) {
+      const result = parseValueList(tokens, pos);
+      const rowValues = [...result.values];
+      // Evaluate expressions in values
+      if (result.exprs) {
+        for (let i = 0; i < result.exprs.length; i++) {
+          const expr = result.exprs[i];
+          if (typeof expr === 'object' && expr !== null && !('literal' in expr)) {
+            rowValues[i] = evaluateExpression(expr, {});
+          }
+        }
+      }
+      allRows.push(rowValues);
+      pos = result.pos;
+      if (sym(tokens, pos, ',')) pos++;
+    }
+
+    // ON CONFLICT handling (UPSERT)
+    let onConflict = null;
+    if (kw(tokens, pos, 'ON') && kw(tokens, pos + 1, 'CONFLICT')) {
+      pos += 2;
+      onConflict = { action: 'nothing', column: null, updates: {} };
+      if (sym(tokens, pos, '(')) {
+        pos++;
+        onConflict.column = tokens[pos].value;
+        pos++;
+        pos++; // skip )
+      }
+      if (kw(tokens, pos, 'DO')) pos++;
+      if (kw(tokens, pos, 'NOTHING')) {
+        onConflict.action = 'nothing';
+        pos++;
+      } else if (kw(tokens, pos, 'UPDATE')) {
+        pos++;
+        if (kw(tokens, pos, 'SET')) pos++;
+        onConflict.action = 'update';
+        onConflict.updates = {};
+        while (pos < tokens.length && !sym(tokens, pos, ';') && !kw(tokens, pos, 'RETURNING')) {
+          const col = tokens[pos].value;
+          pos++;
+          pos++; // skip =
+          const exprResult = parseExpression(tokens, pos);
+          pos = exprResult.pos;
+          onConflict.updates[col] = exprResult.expr;
+          if (sym(tokens, pos, ',')) pos++;
+        }
+      }
+    }
+
+    // RETURNING
+    let returning = null;
+    if (kw(tokens, pos, 'RETURNING')) {
+      pos++;
+      if (sym(tokens, pos, '*')) {
+        returning = ['*'];
+        pos++;
+      } else {
+        returning = [];
+        while (pos < tokens.length && !sym(tokens, pos, ';')) {
+          returning.push(tokens[pos].value);
+          pos++;
+          if (sym(tokens, pos, ',')) pos++;
+        }
+      }
+    }
+
+    if (allRows.length === 1) {
+      const data = { table, row: buildRow(columns, allRows[0]) };
+      if (onConflict) data.onConflict = onConflict;
+      if (returning) data.returning = returning;
+      return new Event('insert_execute', data);
+    }
+
+    return allRows.map(values => {
+      const data = { table, row: buildRow(columns, values) };
+      if (onConflict) data.onConflict = onConflict;
+      if (returning) data.returning = returning;
+      return new Event('insert_execute', data);
+    });
+  }
+}
+
+function buildRow(columns, values) {
+  const row = {};
+  if (columns) {
+    for (let i = 0; i < columns.length; i++) {
+      if (values[i] !== undefined) {
+        row[columns[i]] = values[i];
+      }
+    }
+  } else {
+    // Without columns, use positional naming (execute gate resolves against schema)
+    for (let i = 0; i < values.length; i++) {
+      row[`_col${i}`] = values[i];
+    }
+  }
+  return row;
+}
+
+
+// ═══ src/gates/query/sql/SelectParseGate.js ═══
+
+class SelectParseGate extends PureGate {
+  constructor() { super('select_parse'); }
+
+  transform(event) {
+    const tokens = event.data.tokens;
+    let pos = 1; // skip SELECT
+    const pipeline = [];
+    const ctes = event.data.ctes || {};
+    const recursive = event.data.recursive || false;
+    const cteColumns = event.data.cteColumns || {};
+
+    // DISTINCT
+    let distinct = false;
+    if (kw(tokens, pos, 'DISTINCT')) {
+      distinct = true;
+      pos++;
+    }
+
+    // Column list
+    const colResult = parseColumnList(tokens, pos);
+    const columns = colResult.columns;
+    pos = colResult.pos;
+
+    // Extract aggregates, window functions from columns
+    const aggregates = [];
+    const projectCols = [];
+    const allSelectCols = []; // Tracks all columns in original order for ORDER BY number
+    let hasAggregates = false;
+    const windowFns = [];
+
+    for (const col of columns) {
+      if (col === '*') {
+        projectCols.push('*');
+        allSelectCols.push('*');
+      } else if (typeof col === 'object' && col.aggregate) {
+        hasAggregates = true;
+        const agg = { fn: col.aggregate.fn, column: col.aggregate.column, alias: col.alias };
+        if (col.aggregate.distinct) agg.distinct = true;
+        if (col.aggregate.separator !== undefined) agg.separator = col.aggregate.separator;
+        aggregates.push(agg);
+        allSelectCols.push({ alias: col.alias });
+      } else if (typeof col === 'object' && col.window) {
+        windowFns.push({
+          fn: col.window.fn, column: col.window.column,
+          distinct: col.window.distinct || false,
+          over: col.window.over, alias: col.alias,
+        });
+        allSelectCols.push({ alias: col.alias });
+      } else if (typeof col === 'object' && col.expr) {
+        projectCols.push(col);
+        allSelectCols.push(col);
+      } else {
+        projectCols.push(col);
+        allSelectCols.push(col);
+      }
+    }
+
+    // FROM (optional — SELECT without FROM returns one row)
+    let mainAlias;
+
+    if (!kw(tokens, pos, 'FROM')) {
+      pipeline.push({ type: 'virtual_row', data: {} });
+    } else {
+    pos++;
+
+    // Derived table: FROM (SELECT ...) [AS] alias
+    if (isSubquery(tokens, pos)) {
+      const sub = parseSubquery(tokens, pos);
+      pos = sub.pos;
+      let alias = 'derived';
+      if (kw(tokens, pos, 'AS')) pos++;
+      if (tokens[pos]?.type === 'IDENTIFIER') { alias = tokens[pos].value; pos++; }
+      pipeline.push({ type: 'derived_scan', data: { subquery: sub.tokens, alias } });
+      mainAlias = alias;
+    } else {
+      const tableRef = parseTableRef(tokens, pos);
+      const mainTable = tableRef.table;
+      mainAlias = tableRef.alias || mainTable;
+      pos = tableRef.pos;
+
+      if (ctes[mainTable]) {
+        const scanData = { subquery: ctes[mainTable], alias: mainAlias };
+        if (recursive && cteColumns[mainTable]) {
+          scanData.recursive = true;
+          scanData.cteName = mainTable;
+          scanData.cteColumns = cteColumns[mainTable];
+        }
+        pipeline.push({ type: 'derived_scan', data: scanData });
+      } else {
+        pipeline.push({ type: 'table_scan', data: { table: mainTable, alias: mainAlias } });
+      }
+    }
+    } // end FROM else
+
+    // JOIN clauses
+    while (pos < tokens.length && isJoinKeyword(tokens, pos)) {
+      const join = parseJoin(tokens, pos, mainAlias);
+      pipeline.push(join.step);
+      pos = join.pos;
+    }
+
+    // WHERE
+    if (kw(tokens, pos, 'WHERE')) {
+      pos++;
+      const whereResult = parseWhereClause(tokens, pos);
+      pipeline.push({ type: 'filter', data: { where: whereResult.condition } });
+      pos = whereResult.pos;
+    }
+
+    // GROUP BY
+    let groupBy = null;
+    if (kw(tokens, pos, 'GROUP') && kw(tokens, pos + 1, 'BY')) {
+      pos += 2;
+      groupBy = [];
+      while (pos < tokens.length && !kw(tokens, pos, 'HAVING') && !kw(tokens, pos, 'ORDER') && !kw(tokens, pos, 'LIMIT') && !sym(tokens, pos, ';')) {
+        let col = tokens[pos].value;
+        pos++;
+        // Handle qualified: table.column
+        if (sym(tokens, pos, '.')) { pos++; col = col + '.' + tokens[pos].value; pos++; }
+        groupBy.push(col);
+        if (sym(tokens, pos, ',')) pos++;
+      }
+    }
+
+    // Aggregates
+    if (hasAggregates || groupBy) {
+      const aggList = aggregates.length > 0 ? aggregates : [{ fn: 'COUNT', column: '*', alias: 'count' }];
+      pipeline.push({ type: 'aggregate', data: { aggregates: aggList, groupBy } });
+    }
+
+    // HAVING
+    if (kw(tokens, pos, 'HAVING')) {
+      pos++;
+      const havingResult = parseWhereClause(tokens, pos);
+      pipeline.push({ type: 'filter', data: { where: havingResult.condition } });
+      pos = havingResult.pos;
+    }
+
+    // WINDOW FUNCTIONS
+    if (windowFns.length > 0) {
+      pipeline.push({ type: 'window', data: { windows: windowFns } });
+      for (const wf of windowFns) projectCols.push(wf.alias);
+    }
+
+    // PROJECT
+    const needsProject = !(projectCols.length === 1 && projectCols[0] === '*') &&
+                         !(projectCols.length === 0 && hasAggregates) &&
+                         !hasAggregates;
+    if (needsProject && projectCols.length > 0) {
+      pipeline.push({ type: 'project', data: { columns: projectCols } });
+    }
+
+    // DISTINCT
+    if (distinct) {
+      pipeline.push({ type: 'distinct', data: { columns: null } });
+    }
+
+    // ORDER BY
+    if (kw(tokens, pos, 'ORDER') && kw(tokens, pos + 1, 'BY')) {
+      pos += 2;
+      const orderResult = parseOrderBy(tokens, pos);
+      pipeline.push({ type: 'order_by', data: { order: orderResult.order, selectCols: allSelectCols } });
+      pos = orderResult.pos;
+    }
+
+    // LIMIT / OFFSET
+    if (kw(tokens, pos, 'LIMIT')) {
+      pos++;
+      const limit = tokens[pos].value;
+      pos++;
+      let offset = 0;
+      if (kw(tokens, pos, 'OFFSET')) { pos++; offset = tokens[pos].value; pos++; }
+      pipeline.push({ type: 'limit', data: { limit, offset } });
+    }
+
+    // UNION / EXCEPT / INTERSECT
+    if (kw(tokens, pos, 'UNION') || kw(tokens, pos, 'EXCEPT') || kw(tokens, pos, 'INTERSECT')) {
+      const setOp = tokens[pos].value;
+      pos++;
+      let all = false;
+      if (kw(tokens, pos, 'ALL')) { all = true; pos++; }
+      const rightTokens = tokens.slice(pos);
+      const rightEvent = new Event('select_parse', { tokens: rightTokens, sql: '' });
+      const rightResult = this.transform(rightEvent);
+      if (rightResult && rightResult.type === 'query_plan') {
+        let rightPipeline = rightResult.data.pipeline;
+        // Hoist ORDER BY / LIMIT from rightmost branch to post-union level
+        const hoistTypes = ['order_by', 'limit', 'distinct'];
+        const postSteps = [];
+        // Walk to deepest right leaf of nested unions
+        let leaf = rightPipeline;
+        while (leaf.length === 1 && leaf[0].type === 'union') {
+          leaf = leaf[0].data.right;
+        }
+        while (leaf.length > 0 && hoistTypes.includes(leaf[leaf.length - 1].type)) {
+          postSteps.push(leaf.pop());
+        }
+        postSteps.reverse();
+
+        const finalPipeline = [
+          { type: 'union', data: { left: pipeline, right: rightPipeline, setOp: setOp.toLowerCase(), all } },
+          ...postSteps
+        ];
+        return new Event('query_plan', { pipeline: finalPipeline, ctes });
+      }
+      return rightResult;
+    }
+
+    return new Event('query_plan', { pipeline, ctes });
+  }
+}
+
+function isJoinKeyword(tokens, pos) {
+  if (kw(tokens, pos, 'JOIN')) return true;
+  if (kw(tokens, pos, 'INNER') || kw(tokens, pos, 'LEFT') ||
+      kw(tokens, pos, 'RIGHT') || kw(tokens, pos, 'FULL') ||
+      kw(tokens, pos, 'CROSS')) return true;
+  return false;
+}
+
+function parseJoin(tokens, pos, leftAlias) {
+  let type = 'inner';
+  if (kw(tokens, pos, 'LEFT')) { type = 'left'; pos++; if (kw(tokens, pos, 'OUTER')) pos++; }
+  else if (kw(tokens, pos, 'RIGHT')) { type = 'right'; pos++; if (kw(tokens, pos, 'OUTER')) pos++; }
+  else if (kw(tokens, pos, 'FULL')) { type = 'full'; pos++; if (kw(tokens, pos, 'OUTER')) pos++; }
+  else if (kw(tokens, pos, 'CROSS')) { type = 'cross'; pos++; }
+  else if (kw(tokens, pos, 'INNER')) { pos++; }
+
+  pos++; // skip JOIN
+
+  const tableRef = parseTableRef(tokens, pos);
+  const rightAlias = tableRef.alias || tableRef.table;
+  pos = tableRef.pos;
+
+  let on = null;
+  if (kw(tokens, pos, 'ON')) {
+    pos++;
+    const conditions = [];
+    do {
+      const firstAlias = tokens[pos].value; pos++;
+      let firstField = firstAlias;
+      if (sym(tokens, pos, '.')) { pos++; firstField = tokens[pos].value; pos++; }
+
+      pos++; // skip operator (=, <, >, etc.)
+
+      const secondAlias = tokens[pos].value; pos++;
+      let secondField = secondAlias;
+      if (sym(tokens, pos, '.')) { pos++; secondField = tokens[pos].value; pos++; }
+
+      let cond;
+      if (firstAlias === rightAlias) {
+        const leftRef = (secondAlias !== secondField) ? `${secondAlias}.${secondField}` : secondField;
+        cond = { left: leftRef, right: firstField };
+      } else if (secondAlias === rightAlias) {
+        const leftRef = (firstAlias !== firstField) ? `${firstAlias}.${firstField}` : firstField;
+        cond = { left: leftRef, right: secondField };
+      } else {
+        cond = { left: firstField, right: secondField };
+      }
+      conditions.push(cond);
+    } while (kw(tokens, pos, 'AND') && ++pos);
+
+    on = conditions.length === 1 ? conditions[0] : conditions;
+  }
+
+  return {
+    step: { type: 'join', data: { right: { table: tableRef.table, alias: rightAlias }, on, type, leftAlias } },
+    pos
+  };
+}
+
+
+// ═══ src/gates/query/sql/UpdateParseGate.js ═══
+
+class UpdateParseGate extends PureGate {
+  constructor() { super('update_parse'); }
+
+  transform(event) {
+    const tokens = event.data.tokens;
+    let pos = 1; // skip UPDATE
+
+    const table = tokens[pos].value;
+    pos++;
+
+    // SET
+    pos++; // skip SET
+
+    const changes = {};
+    const changesExprs = {};
+    while (pos < tokens.length && !kw(tokens, pos, 'WHERE') && !kw(tokens, pos, 'RETURNING') && !kw(tokens, pos, 'FROM') && !sym(tokens, pos, ';')) {
+      const column = tokens[pos].value;
+      pos++;
+      pos++; // skip =
+      const exprResult = parseExpression(tokens, pos);
+      const expr = exprResult.expr;
+      pos = exprResult.pos;
+
+      // Simple literal → backward-compatible changes format
+      if (typeof expr === 'object' && expr !== null && expr.literal !== undefined) {
+        changes[column] = expr.literal;
+      } else {
+        changesExprs[column] = expr;
+      }
+      if (sym(tokens, pos, ',')) pos++;
+    }
+
+    // FROM clause (PostgreSQL-style join update)
+    let fromTable = null;
+    let fromAlias = null;
+    if (kw(tokens, pos, 'FROM')) {
+      pos++;
+      fromTable = tokens[pos].value;
+      pos++;
+      fromAlias = fromTable;
+      if (tokens[pos] && tokens[pos].type === 'IDENTIFIER' &&
+          !kw(tokens, pos, 'WHERE') && !kw(tokens, pos, 'RETURNING')) {
+        if (kw(tokens, pos, 'AS')) pos++;
+        fromAlias = tokens[pos].value;
+        pos++;
+      }
+    }
+
+    let where = null;
+    if (kw(tokens, pos, 'WHERE')) {
+      pos++;
+      const result = parseWhereClause(tokens, pos);
+      where = result.condition;
+      pos = result.pos;
+    }
+
+    const data = { table, changes, where };
+    if (Object.keys(changesExprs).length > 0) {
+      data.changesExprs = changesExprs;
+    }
+    if (fromTable) {
+      data.fromTable = fromTable;
+      data.fromAlias = fromAlias;
+    }
+
+    // RETURNING
+    if (kw(tokens, pos, 'RETURNING')) {
+      pos++;
+      if (sym(tokens, pos, '*')) {
+        data.returning = ['*'];
+      } else {
+        data.returning = [];
+        while (pos < tokens.length && !sym(tokens, pos, ';')) {
+          data.returning.push(tokens[pos].value);
+          pos++;
+          if (sym(tokens, pos, ',')) pos++;
+        }
+      }
+    }
+
+    return new Event('update_execute', data);
+  }
+}
+
+
+// ═══ src/gates/query/sql/DeleteParseGate.js ═══
+
+class DeleteParseGate extends PureGate {
+  constructor() { super('delete_parse'); }
+
+  transform(event) {
+    const tokens = event.data.tokens;
+    let pos = 1; // skip DELETE
+
+    // FROM
+    if (kw(tokens, pos, 'FROM')) pos++;
+
+    const table = tokens[pos].value;
+    pos++;
+
+    let where = null;
+    if (kw(tokens, pos, 'WHERE')) {
+      pos++;
+      const result = parseWhereClause(tokens, pos);
+      where = result.condition;
+      pos = result.pos;
+    }
+
+    const data = { table, where };
+
+    // RETURNING
+    if (kw(tokens, pos, 'RETURNING')) {
+      pos++;
+      if (sym(tokens, pos, '*')) {
+        data.returning = ['*'];
+      } else {
+        data.returning = [];
+        while (pos < tokens.length && !sym(tokens, pos, ';')) {
+          data.returning.push(tokens[pos].value);
+          pos++;
+          if (sym(tokens, pos, ',')) pos++;
+        }
+      }
+    }
+
+    return new Event('delete_execute', data);
+  }
+}
+
+
+// ═══ src/gates/query/sql/IndexParseGates.js ═══
+
+class IndexCreateParseGate extends PureGate {
+  constructor() { super('index_create_parse'); }
+
+  transform(event) {
+    const tokens = event.data.tokens;
+    let pos = 1; // skip CREATE
+
+    let unique = false;
+    if (kw(tokens, pos, 'UNIQUE')) { unique = true; pos++; }
+    pos++; // skip INDEX
+
+    const index = tokens[pos].value;
+    pos++;
+
+    // ON table
+    pos++; // skip ON
+    const table = tokens[pos].value;
+    pos++;
+
+    // (column)
+    pos++; // skip (
+    const column = tokens[pos].value;
+    pos++;
+
+    return new Event('index_create_execute', { table, index, column, unique });
+  }
+}
+
+class IndexDropParseGate extends PureGate {
+  constructor() { super('index_drop_parse'); }
+
+  transform(event) {
+    const tokens = event.data.tokens;
+    let pos = 2; // skip DROP INDEX
+    const index = tokens[pos].value;
+    pos++;
+
+    // ON table
+    pos++; // skip ON
+    const table = tokens[pos].value;
+
+    return new Event('index_drop_execute', { table, index });
+  }
+}
+
+
+// ═══ src/gates/query/sql/ViewParseGates.js ═══
+
+class ViewCreateParseGate extends PureGate {
+  constructor() { super('view_create_parse'); }
+
+  transform(event) {
+    const tokens = event.data.tokens;
+    let pos = 2; // skip CREATE VIEW
+
+    const name = tokens[pos].value;
+    pos++;
+
+    // AS SELECT ...
+    pos++; // skip AS
+
+    // Grab remaining tokens as the sub-select
+    const subTokens = tokens.slice(pos);
+    // Wrap as a select_parse event to be parsed separately
+    // But we need the pipeline — re-parse the sub-select inline
+    // For simplicity, store the raw SQL and tokens for the sub-query
+    const subSql = event.data.sql.substring(event.data.sql.toUpperCase().indexOf(' AS ') + 4).trim();
+
+    return new Event('view_create_execute', {
+      name,
+      query: { sql: subSql, tokens: subTokens },
+      columns: null
+    });
+  }
+}
+
+class ViewDropParseGate extends PureGate {
+  constructor() { super('view_drop_parse'); }
+
+  transform(event) {
+    const tokens = event.data.tokens;
+    return new Event('view_drop_execute', { name: tokens[2].value });
+  }
+}
+
+
+// ═══ src/gates/query/sql/TriggerParseGates.js ═══
+
+class TriggerCreateParseGate extends PureGate {
+  constructor() { super('trigger_create_parse'); }
+
+  transform(event) {
+    const tokens = event.data.tokens;
+    let pos = 2; // skip CREATE TRIGGER
+
+    const name = tokens[pos].value;
+    pos++;
+
+    // BEFORE|AFTER
+    const timing = tokens[pos].value.toLowerCase();
+    pos++;
+
+    // INSERT|UPDATE|DELETE
+    const triggerEvent = tokens[pos].value.toLowerCase();
+    pos++;
+
+    // ON table
+    pos++; // ON
+    const table = tokens[pos].value;
+    pos++;
+
+    // Rest is the action body — store as raw tokens
+    const action = { tokens: tokens.slice(pos) };
+
+    return new Event('trigger_create_execute', { name, table, timing, event: triggerEvent, action });
+  }
+}
+
+class TriggerDropParseGate extends PureGate {
+  constructor() { super('trigger_drop_parse'); }
+
+  transform(event) {
+    return new Event('trigger_drop_execute', { name: event.data.tokens[2].value });
+  }
+}
+
+
+// ═══ src/gates/query/sql/ConstraintParseGates.js ═══
+
+class ConstraintCreateParseGate extends PureGate {
+  constructor() { super('constraint_create_parse'); }
+
+  transform(event) {
+    const tokens = event.data.tokens;
+    let pos = 2; // skip ALTER TABLE
+
+    const table = tokens[pos].value;
+    pos++;
+
+    pos++; // skip ADD
+    pos++; // skip CONSTRAINT
+
+    const name = tokens[pos].value;
+    pos++;
+
+    // UNIQUE, CHECK, FOREIGN KEY
+    let type = 'check';
+    let params = {};
+
+    if (kw(tokens, pos, 'UNIQUE')) {
+      type = 'unique';
+      pos++;
+      if (sym(tokens, pos, '(')) {
+        const result = parseIdentList(tokens, pos);
+        params = { columns: result.idents };
+        pos = result.pos;
+      }
+    } else if (kw(tokens, pos, 'CHECK')) {
+      type = 'check';
+      pos++;
+      // Store raw check expression
+      params = { expression: tokens.slice(pos).map(t => t.value).join(' ') };
+    } else if (kw(tokens, pos, 'FOREIGN')) {
+      type = 'foreign_key';
+      pos += 2; // FOREIGN KEY
+      if (sym(tokens, pos, '(')) {
+        const cols = parseIdentList(tokens, pos);
+        params.columns = cols.idents;
+        pos = cols.pos;
+      }
+      if (kw(tokens, pos, 'REFERENCES')) {
+        pos++;
+        params.refTable = tokens[pos].value;
+        pos++;
+        if (sym(tokens, pos, '(')) {
+          const refCols = parseIdentList(tokens, pos);
+          params.refColumns = refCols.idents;
+        }
+      }
+    }
+
+    return new Event('constraint_create_execute', { table, name, type, params });
+  }
+}
+
+class ConstraintDropParseGate extends PureGate {
+  constructor() { super('constraint_drop_parse'); }
+
+  transform(event) {
+    const tokens = event.data.tokens;
+    let pos = 2; // skip ALTER TABLE
+    const table = tokens[pos].value;
+    pos++;
+    pos++; // DROP
+    pos++; // CONSTRAINT
+    const name = tokens[pos].value;
+    return new Event('constraint_drop_execute', { table, name });
+  }
+}
+
+
+// ═══ src/gates/query/sql/AlterTableParseGates.js ═══
+/**
+ * AlterTableParseGates — parse ALTER TABLE ADD COLUMN, DROP COLUMN, RENAME.
+ */
+
+class AlterTableAddColumnParseGate extends PureGate {
+  constructor() { super('alter_table_add_column_parse'); }
+
+  transform(event) {
+    const tokens = event.data.tokens;
+    let pos = 2; // skip ALTER TABLE
+
+    const table = tokens[pos].value;
+    pos++;
+
+    pos++; // skip ADD
+    if (kw(tokens, pos, 'COLUMN')) pos++;
+
+    const colName = tokens[pos].value;
+    pos++;
+
+    let type = 'text';
+    const typeKeywords = ['INTEGER','INT','TEXT','VARCHAR','REAL','FLOAT','DOUBLE','BOOLEAN','BOOL',
+      'BLOB','DATE','TIMESTAMP','BIGINT','SMALLINT','NUMERIC','DECIMAL','CHAR','STRING'];
+    if (pos < tokens.length && tokens[pos].type === 'KEYWORD' && typeKeywords.includes(tokens[pos].value)) {
+      type = normalizeType(tokens[pos].value);
+      pos++;
+      if (sym(tokens, pos, '(')) {
+        while (!sym(tokens, pos, ')') && pos < tokens.length) pos++;
+        pos++;
+      }
+    }
+
+    let nullable = true;
+    let defaultVal = null;
+
+    while (pos < tokens.length && !sym(tokens, pos, ';')) {
+      if (kw(tokens, pos, 'NOT') && kw(tokens, pos + 1, 'NULL')) {
+        nullable = false;
+        pos += 2;
+      } else if (kw(tokens, pos, 'DEFAULT')) {
+        pos++;
+        const lit = parseLiteralValue(tokens, pos);
+        defaultVal = lit.value;
+        pos = lit.pos;
+      } else {
+        pos++;
+      }
+    }
+
+    return new Event('alter_table_add_column', {
+      table,
+      column: { name: colName, type, nullable, default: defaultVal },
+    });
+  }
+}
+
+class AlterTableDropColumnParseGate extends PureGate {
+  constructor() { super('alter_table_drop_column_parse'); }
+
+  transform(event) {
+    const tokens = event.data.tokens;
+    let pos = 2; // skip ALTER TABLE
+
+    const table = tokens[pos].value;
+    pos++;
+
+    pos++; // skip DROP
+    if (kw(tokens, pos, 'COLUMN')) pos++;
+
+    const column = tokens[pos].value;
+
+    return new Event('alter_table_drop_column', { table, column });
+  }
+}
+
+class RenameTableParseGate extends PureGate {
+  constructor() { super('rename_table_parse'); }
+
+  transform(event) {
+    const tokens = event.data.tokens;
+    let pos = 2; // skip ALTER TABLE
+
+    const table = tokens[pos].value;
+    pos++;
+
+    pos++; // skip RENAME
+    if (kw(tokens, pos, 'TO')) pos++;
+
+    const newName = tokens[pos].value;
+
+    return new Event('rename_table', { table, newName });
+  }
+}
+
+
+// ═══ src/gates/query/sql/QueryPlanGate.js ═══
+/**
+ * QueryPlanGate — executes a query pipeline.
+ *
+ * StateGate: reads tables referenced in scan steps,
+ * then runs filter/project/order/limit/distinct/aggregate.
+ * Phase 13: resolves subqueries in filter/project expressions.
+ */
+
+class QueryPlanGate extends StateGate {
+  constructor() { super('query_plan'); }
+
+  reads(event) {
+    const rs = new ReadSet();
+    const ctes = event.data.ctes || {};
+    scanPipelineReads(event.data.pipeline, rs, ctes);
+    return rs;
+  }
+
+  transform(event, state) {
+    const ctes = event.data.ctes || {};
+    const rows = executePipeline(event.data.pipeline, state, ctes);
+    return new MutationBatch()
+      .emit(new Event('query_result', { rows }));
+  }
+}
+
+function scanPipelineReads(pipeline, rs, ctes = {}) {
+  for (const step of pipeline) {
+    if (step.type === 'table_scan') rs.pattern(`db/tables/${step.data.table}/rows/`);
+    if (step.type === 'index_scan') {
+      rs.ref(`db/tables/${step.data.table}/indexes/${step.data.index}`);
+      rs.pattern(`db/tables/${step.data.table}/rows/`);
+    }
+    if (step.type === 'join') {
+      const rightTable = step.data.right.table;
+      if (ctes[rightTable]) {
+        scanSubqueryTokensForReads(ctes[rightTable], rs);
+      } else {
+        rs.pattern(`db/tables/${rightTable}/rows/`);
+      }
+    }
+    if (step.type === 'union') {
+      scanPipelineReads(step.data.left, rs, ctes);
+      scanPipelineReads(step.data.right, rs, ctes);
+    }
+    // Scan subqueries in filter/project
+    if (step.type === 'filter') scanConditionSubqueries(step.data.where, rs);
+    if (step.type === 'project') {
+      for (const col of step.data.columns || []) {
+        if (typeof col === 'object' && col.expr) scanExprSubqueries(col.expr, rs);
+      }
+    }
+    if (step.type === 'derived_scan') {
+      scanSubqueryTokensForReads(step.data.subquery, rs);
+    }
+  }
+}
+
+function scanConditionSubqueries(cond, rs) {
+  if (!cond) return;
+  if (cond.and) { for (const c of cond.and) scanConditionSubqueries(c, rs); return; }
+  if (cond.or) { for (const c of cond.or) scanConditionSubqueries(c, rs); return; }
+  if (cond.not) { scanConditionSubqueries(cond.not, rs); return; }
+  if (cond.subquery) scanSubqueryTokensForReads(cond.subquery, rs);
+  if (cond.leftExpr) scanExprSubqueries(cond.leftExpr, rs);
+  if (cond.rightExpr) scanExprSubqueries(cond.rightExpr, rs);
+}
+
+function scanExprSubqueries(expr, rs) {
+  if (!expr || typeof expr !== 'object') return;
+  if (expr.subquery) scanSubqueryTokensForReads(expr.subquery, rs);
+  if (expr.left) scanExprSubqueries(expr.left, rs);
+  if (expr.right) scanExprSubqueries(expr.right, rs);
+  if (expr.args) for (const a of expr.args) scanExprSubqueries(a, rs);
+}
+
+function scanSubqueryTokensForReads(tokens, rs) {
+  for (let i = 0; i < tokens.length; i++) {
+    if ((tokens[i].value || '') === 'FROM' && tokens[i + 1]) {
+      const table = tokens[i + 1].value || '';
+      if (table) rs.pattern(`db/tables/${table}/rows/`);
+    }
+  }
+}
+
+function executePipeline(pipeline, state, ctes = {}) {
+  let rows = [];
+  let leftTable = '';
+
+  for (const step of pipeline) {
+    switch (step.type) {
+      case 'virtual_row':
+        rows = [{}]; // Single empty row for SELECT without FROM
+        break;
+      case 'table_scan': {
+        const pattern = `db/tables/${step.data.table}/rows/`;
+        rows = Object.values(state.patterns[pattern] || {});
+        leftTable = step.data.alias || step.data.table;
+        break;
+      }
+      case 'derived_scan': {
+        if (step.data.recursive) {
+          rows = executeRecursiveCTE(step.data, state);
+        } else {
+          rows = executeSubquery(step.data.subquery, state);
+        }
+        leftTable = step.data.alias || 'derived';
+        break;
+      }
+      case 'window': {
+        rows = computeWindowFunctions(rows, step.data.windows);
+        break;
+      }
+      case 'index_scan': {
+        const index = state.refs[`db/tables/${step.data.table}/indexes/${step.data.index}`];
+        if (!index) break;
+        const matchingIds = new Set();
+        for (const entry of (index.entries || [])) {
+          if (matchesIndexOp(entry.key, step.data.op, step.data.value)) {
+            for (const id of entry.row_ids) matchingIds.add(id);
+          }
+        }
+        const allRows = Object.values(state.patterns[`db/tables/${step.data.table}/rows/`] || {});
+        rows = allRows.filter(r => matchingIds.has(r.id));
+        leftTable = step.data.table;
+        break;
+      }
+      case 'filter': {
+        const where = resolveConditionSubqueries(step.data.where, state);
+        rows = filterRows(rows, where);
+        break;
+      }
+      case 'project': {
+        const cols = resolveProjectSubqueries(step.data.columns, state);
+        rows = projectRows(rows, cols);
+        break;
+      }
+      case 'order_by': {
+        const order = resolveOrderByNumbers(step.data.order, step.data.selectCols || []);
+        rows = orderByRows(rows, order);
+        break;
+      }
+      case 'limit':
+        rows = limitRows(rows, step.data.limit, step.data.offset);
+        break;
+      case 'distinct':
+        rows = distinctRows(rows, step.data.columns);
+        break;
+      case 'aggregate':
+        rows = aggregateRows(rows, step.data.aggregates, step.data.groupBy);
+        break;
+      case 'join': {
+        const rightTable = step.data.right.table;
+        let rightRows;
+        if (ctes[rightTable]) {
+          rightRows = executeSubquery(ctes[rightTable], state);
+        } else {
+          const rightPattern = `db/tables/${rightTable}/rows/`;
+          rightRows = Object.values(state.patterns[rightPattern] || {});
+        }
+        const rightAlias = step.data.right.alias || rightTable;
+        const leftAlias = step.data.leftAlias || leftTable;
+        rows = joinRows(rows, rightRows, step.data.on, step.data.type || 'inner', leftAlias, rightAlias);
+        break;
+      }
+      case 'union': {
+        const leftRows = executePipeline(step.data.left, state, ctes);
+        const rightRows = executePipeline(step.data.right, state, ctes);
+        const setOp = step.data.setOp || 'union';
+        const all = step.data.all || false;
+
+        if (setOp === 'union') {
+          rows = [...leftRows, ...rightRows];
+          if (!all) rows = distinctRows(rows, null);
+        } else if (setOp === 'except') {
+          const rightKeys = new Set(rightRows.map(r => JSON.stringify(r)));
+          rows = leftRows.filter(r => !rightKeys.has(JSON.stringify(r)));
+          if (!all) rows = distinctRows(rows, null);
+        } else if (setOp === 'intersect') {
+          const rightKeys = new Set(rightRows.map(r => JSON.stringify(r)));
+          rows = leftRows.filter(r => rightKeys.has(JSON.stringify(r)));
+          if (!all) rows = distinctRows(rows, null);
+        }
+        break;
+      }
+    }
+  }
+
+  return rows;
+}
+
+function matchesIndexOp(key, op, value) {
+  switch (op) {
+    case 'eq':  return key === value;
+    case 'neq': return key !== value;
+    case 'gt':  return key > value;
+    case 'lt':  return key < value;
+    case 'gte': return key >= value;
+    case 'lte': return key <= value;
+    default: return false;
+  }
+}
+
+// ── Subquery resolution ─────────────────────────────────
+
+function resolveOrderByNumbers(order, selectCols) {
+  return order.map(o => {
+    if (typeof o.column === 'number' || (typeof o.column === 'string' && /^\d+$/.test(o.column))) {
+      const idx = parseInt(o.column) - 1;
+      if (idx >= 0 && idx < selectCols.length) {
+        const col = selectCols[idx];
+        return { ...o, column: typeof col === 'string' ? col : (col.alias || col.name || col.column || o.column) };
+      }
+    }
+    return o;
+  });
+}
+
+function executeRecursiveCTE(data, state) {
+  const tokens = data.subquery;
+  const cteName = data.cteName;
+  const cteColumns = data.cteColumns;
+  const maxIterations = 1000;
+
+  // Find UNION ALL split point
+  let unionPos = null;
+  let depth = 0;
+  for (let i = 0; i < tokens.length; i++) {
+    if (tokens[i].type === 'SYMBOL' && tokens[i].value === '(') depth++;
+    if (tokens[i].type === 'SYMBOL' && tokens[i].value === ')') depth--;
+    if (depth === 0 && kw(tokens, i, 'UNION')) { unionPos = i; break; }
+  }
+
+  if (unionPos === null) return executeSubquery(tokens, state);
+
+  const baseTokens = tokens.slice(0, unionPos);
+  let pos = unionPos + 1; // skip UNION
+  if (kw(tokens, pos, 'ALL')) pos++;
+  const recursiveTokens = tokens.slice(pos);
+
+  // Execute base case
+  let allRows = executeSubquery(baseTokens, state).map(row => {
+    const vals = Object.values(row);
+    const out = {};
+    cteColumns.forEach((col, i) => { out[col] = vals[i] !== undefined ? vals[i] : null; });
+    return out;
+  });
+
+  let currentRows = allRows;
+  for (let iter = 0; iter < maxIterations && currentRows.length > 0; iter++) {
+    const virtualState = { ...state, patterns: { ...state.patterns }, refs: { ...state.refs } };
+    const virtualPattern = `db/tables/${cteName}/rows/`;
+    virtualState.patterns[virtualPattern] = {};
+    currentRows.forEach((row, i) => {
+      virtualState.patterns[virtualPattern][`db/tables/${cteName}/rows/${i}`] = { __rowid__: i + 1, ...row };
+    });
+    virtualState.refs[`db/tables/${cteName}/schema`] = {
+      columns: cteColumns.map(c => ({ name: c, type: 'text' }))
+    };
+
+    const newRows = executeSubquery(recursiveTokens, virtualState).map(row => {
+      const vals = Object.values(row);
+      const out = {};
+      cteColumns.forEach((col, i) => { out[col] = vals[i] !== undefined ? vals[i] : null; });
+      return out;
+    });
+
+    if (newRows.length === 0) break;
+    allRows = [...allRows, ...newRows];
+    currentRows = newRows;
+  }
+
+  return allRows;
+}
+
+function executeSubquery(tokens, state) {
+  const parseGate = new SelectParseGate();
+  const result = parseGate.transform(new Event('select_parse', { tokens, sql: '' }));
+  if (!result || result.type !== 'query_plan') return [];
+  return executePipeline(result.data.pipeline, state);
+}
+
+function resolveConditionSubqueries(cond, state) {
+  if (!cond) return null;
+  if (cond.and) return { and: cond.and.map(c => resolveConditionSubqueries(c, state)) };
+  if (cond.or) return { or: cond.or.map(c => resolveConditionSubqueries(c, state)) };
+  if (cond.not) return { not: resolveConditionSubqueries(cond.not, state) };
+
+  // EXISTS subquery
+  if (cond.exists !== undefined && cond.subquery) {
+    const rows = executeSubquery(cond.subquery, state);
+    return { exists: true, resolved: rows.length > 0 };
+  }
+
+  // IN subquery
+  if (cond.subquery && cond.op === 'in') {
+    const rows = executeSubquery(cond.subquery, state);
+    const values = rows.map(r => Object.values(r)[0] ?? null);
+    const resolved = { ...cond };
+    delete resolved.subquery;
+    resolved.value = values;
+    return resolved;
+  }
+
+  // Scalar subquery in leftExpr/rightExpr
+  const result = { ...cond };
+  if (cond.leftExpr) result.leftExpr = resolveExprSubqueries(cond.leftExpr, state);
+  if (cond.rightExpr) result.rightExpr = resolveExprSubqueries(cond.rightExpr, state);
+  return result;
+}
+
+function resolveExprSubqueries(expr, state) {
+  if (!expr || typeof expr !== 'object') return expr;
+
+  if (expr.subquery && !('resolved' in expr)) {
+    const rows = executeSubquery(expr.subquery, state);
+    if (rows.length > 0) {
+      return { ...expr, resolved: Object.values(rows[0])[0] ?? null };
+    }
+    return { ...expr, resolved: null };
+  }
+
+  const result = { ...expr };
+  if (expr.left) result.left = resolveExprSubqueries(expr.left, state);
+  if (expr.right) result.right = resolveExprSubqueries(expr.right, state);
+  if (expr.args) result.args = expr.args.map(a => resolveExprSubqueries(a, state));
+  if (expr.case) {
+    result.case = expr.case.map(b => ({
+      when: resolveConditionSubqueries(b.when, state),
+      then: resolveExprSubqueries(b.then, state),
+    }));
+  }
+  if (expr.else !== undefined) result.else = resolveExprSubqueries(expr.else, state);
+  return result;
+}
+
+function resolveProjectSubqueries(columns, state) {
+  return columns.map(col => {
+    if (typeof col === 'object' && col.expr) {
+      return { ...col, expr: resolveExprSubqueries(col.expr, state) };
+    }
+    return col;
+  });
+}
+
+function computeWindowFunctions(rows, windows) {
+  if (rows.length === 0) return rows;
+
+  for (const win of windows) {
+    const fn = win.fn.toUpperCase();
+    const col = win.column || '*';
+    const alias = win.alias;
+    const partitionBy = win.over.partitionBy;
+    const orderBy = win.over.orderBy;
+
+    // Group into partitions
+    const partitions = {};
+    rows.forEach((row, idx) => {
+      const key = partitionBy
+        ? JSON.stringify(partitionBy.map(c => row[c] ?? null))
+        : '__all__';
+      if (!partitions[key]) partitions[key] = [];
+      partitions[key].push(idx);
+    });
+
+    for (const indices of Object.values(partitions)) {
+      // Sort within partition
+      if (orderBy) {
+        indices.sort((a, b) => {
+          for (const spec of orderBy) {
+            const va = rows[a][spec.column] ?? null;
+            const vb = rows[b][spec.column] ?? null;
+            const dir = (spec.direction || 'asc') === 'desc' ? -1 : 1;
+            if (va === null && vb === null) continue;
+            if (va === null) return 1;
+            if (vb === null) return -1;
+            if (va < vb) return -1 * dir;
+            if (va > vb) return 1 * dir;
+          }
+          return 0;
+        });
+      }
+
+      const partitionRows = indices.map(i => rows[i]);
+      let rank = 0, denseRank = 0, prevVals = null;
+
+      indices.forEach((rowIdx, posInPart) => {
+        switch (fn) {
+          case 'ROW_NUMBER':
+            rows[rowIdx][alias] = posInPart + 1;
+            break;
+
+          case 'RANK':
+            if (orderBy) {
+              const curVals = orderBy.map(s => rows[rowIdx][s.column] ?? null);
+              if (prevVals === null || JSON.stringify(curVals) !== JSON.stringify(prevVals)) {
+                rank = posInPart + 1;
+                prevVals = curVals;
+              }
+              rows[rowIdx][alias] = rank;
+            } else {
+              rows[rowIdx][alias] = 1;
+            }
+            break;
+
+          case 'DENSE_RANK':
+            if (orderBy) {
+              const curVals = orderBy.map(s => rows[rowIdx][s.column] ?? null);
+              if (prevVals === null || JSON.stringify(curVals) !== JSON.stringify(prevVals)) {
+                denseRank++;
+                prevVals = curVals;
+              }
+              rows[rowIdx][alias] = denseRank;
+            } else {
+              rows[rowIdx][alias] = 1;
+            }
+            break;
+
+          case 'SUM': {
+            const vals = partitionRows.map(r => r[col]).filter(v => v !== null && v !== undefined && typeof v === 'number');
+            rows[rowIdx][alias] = vals.reduce((a, b) => a + b, 0);
+            break;
+          }
+          case 'AVG': {
+            const vals = partitionRows.map(r => r[col]).filter(v => v !== null && v !== undefined && typeof v === 'number');
+            rows[rowIdx][alias] = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+            break;
+          }
+          case 'COUNT':
+            rows[rowIdx][alias] = col === '*'
+              ? partitionRows.length
+              : partitionRows.filter(r => r[col] !== null && r[col] !== undefined).length;
+            break;
+
+          case 'MIN': {
+            const vals = partitionRows.map(r => r[col]).filter(v => v !== null && v !== undefined);
+            rows[rowIdx][alias] = vals.length > 0 ? Math.min(...vals) : null;
+            break;
+          }
+          case 'MAX': {
+            const vals = partitionRows.map(r => r[col]).filter(v => v !== null && v !== undefined);
+            rows[rowIdx][alias] = vals.length > 0 ? Math.max(...vals) : null;
+            break;
+          }
+        }
+      });
+    }
+  }
+  return rows;
+}
+
+
+// ═══ src/gates/query/sql/Phase12Gates.js ═══
+/**
+ * Phase 12 Parse Gates — EXPLAIN, INSERT...SELECT, CREATE TABLE AS SELECT.
+ */
+
+/**
+ * ExplainGate — returns the query plan as rows rather than executing.
+ */
+class ExplainGate extends PureGate {
+  constructor() { super('explain'); }
+
+  transform(event) {
+    const tokens = event.data.tokens;
+    if (!tokens.length || tokens[0].value !== 'SELECT') {
+      return new Event('error', { message: 'EXPLAIN only supports SELECT', source: 'explain' });
+    }
+    const parseGate = new SelectParseGate();
+    const result = parseGate.transform(new Event('select_parse', { tokens, sql: '' }));
+    if (!result || result.type !== 'query_plan') return result;
+    return new Event('query_result', { rows: describePipeline(result.data.pipeline) });
+  }
+}
+
+function describePipeline(pipeline, depth = 0) {
+  const rows = [];
+  for (let i = 0; i < pipeline.length; i++) {
+    const step = pipeline[i];
+    const prefix = '  '.repeat(depth);
+    let desc;
+    switch (step.type) {
+      case 'table_scan': desc = `SCAN ${step.data.table}`; break;
+      case 'index_scan': desc = `INDEX SCAN ${step.data.table}.${step.data.index}`; break;
+      case 'filter': desc = 'FILTER'; break;
+      case 'project': desc = 'PROJECT'; break;
+      case 'order_by': desc = 'ORDER BY'; break;
+      case 'limit': desc = `LIMIT ${step.data.limit}${step.data.offset ? ` OFFSET ${step.data.offset}` : ''}`; break;
+      case 'distinct': desc = 'DISTINCT'; break;
+      case 'aggregate': desc = 'AGGREGATE'; break;
+      case 'join': desc = `${(step.data.type || 'inner').toUpperCase()} JOIN ${step.data.right.table}`; break;
+      case 'union': desc = `${(step.data.setOp || 'union').toUpperCase()}${step.data.all ? ' ALL' : ''}`; break;
+      default: desc = step.type.toUpperCase(); break;
+    }
+    rows.push({ step: i + 1, operation: prefix + desc });
+    if (step.type === 'union') {
+      rows.push({ step: null, operation: prefix + '  LEFT:' });
+      rows.push(...describePipeline(step.data.left, depth + 2));
+      rows.push({ step: null, operation: prefix + '  RIGHT:' });
+      rows.push(...describePipeline(step.data.right, depth + 2));
+    }
+  }
+  return rows;
+}
+
+/**
+ * InsertSelectGate — transforms INSERT...SELECT into insert_select_plan event.
+ */
+class InsertSelectGate extends PureGate {
+  constructor() { super('insert_select'); }
+
+  transform(event) {
+    const { table, columns, selectTokens } = event.data;
+    const parseGate = new SelectParseGate();
+    const result = parseGate.transform(new Event('select_parse', { tokens: selectTokens, sql: '' }));
+    if (!result || result.type !== 'query_plan') {
+      return result || new Event('error', { message: 'Invalid SELECT in INSERT...SELECT', source: 'insert_select' });
+    }
+    return new Event('insert_select_plan', { table, columns, pipeline: result.data.pipeline });
+  }
+}
+
+/**
+ * CreateTableAsSelectGate — transforms CREATE TABLE AS SELECT into insert_select_plan.
+ */
+class CreateTableAsSelectGate extends PureGate {
+  constructor() { super('create_table_as_select'); }
+
+  transform(event) {
+    const { table, ifNotExists, selectTokens } = event.data;
+    const parseGate = new SelectParseGate();
+    const result = parseGate.transform(new Event('select_parse', { tokens: selectTokens, sql: '' }));
+    if (!result || result.type !== 'query_plan') {
+      return result || new Event('error', { message: 'Invalid SELECT in CREATE TABLE AS', source: 'create_table_as_select' });
+    }
+    return new Event('insert_select_plan', {
+      table, columns: null, pipeline: result.data.pipeline,
+      createTable: true, ifNotExists: ifNotExists || false,
+    });
+  }
+}
+
+
+// ═══ src/gates/query/sql/register.js ═══
+
+function registerSQLGates(runner) {
+  runner.register(new SQLDispatchGate());
+  runner.register(new CreateTableParseGate());
+  runner.register(new DropTableParseGate());
+  runner.register(new InsertParseGate());
+  runner.register(new SelectParseGate());
+  runner.register(new UpdateParseGate());
+  runner.register(new DeleteParseGate());
+  runner.register(new IndexCreateParseGate());
+  runner.register(new IndexDropParseGate());
+  runner.register(new ViewCreateParseGate());
+  runner.register(new ViewDropParseGate());
+  runner.register(new TriggerCreateParseGate());
+  runner.register(new TriggerDropParseGate());
+  runner.register(new ConstraintCreateParseGate());
+  runner.register(new ConstraintDropParseGate());
+  runner.register(new QueryPlanGate());
+  runner.register(new AlterTableAddColumnParseGate());
+  runner.register(new AlterTableDropColumnParseGate());
+  runner.register(new RenameTableParseGate());
+
+  // Phase 12
+  runner.register(new ExplainGate());
+  runner.register(new InsertSelectGate());
+  runner.register(new CreateTableAsSelectGate());
+}
+
+
+
+  function createVM() {
+    const store = new MemoryStore();
+    const refs = new MemoryRefs();
+    const runner = new Runner({ store, refs });
+    registerDatabaseGates(runner);
+    registerSQLGates(runner);
+    return { store, refs, runner };
+  }
+
+  return { createVM, Event };
+})();
+
+
+// ── App State ───────────────────────────────────
+let vm = ICE.createVM();
+const history = [];
+let historyPos = -1;
+
+// ── Execute SQL ─────────────────────────────────
+function executeSql(override) {
+  const input = document.getElementById('input');
+  const sql = (override || input.value).trim();
+  if (!sql) return;
+
+  if (!override) {
+    history.push(sql);
+    historyPos = history.length;
+    input.value = '';
+    autoResize(input);
+  }
+
+  // Remove welcome
+  const welcome = document.querySelector('.welcome');
+  if (welcome) welcome.remove();
+
+  const t0 = performance.now();
+
+  // Handle multi-statement (split on semicolons)
+  const stmts = sql.split(/;\s*/).filter(s => s.trim());
+  let lastPending = [];
+
+  for (const stmt of stmts) {
+    const s = stmt.trim();
+    if (!s) continue;
+    vm.runner.clearPending();
+    try {
+      vm.runner.emit(new ICE.Event('sql', { sql: s }));
+    } catch (e) {
+      appendError(sql, e.message, performance.now() - t0);
+      refreshSchema();
+      return;
+    }
+    lastPending = vm.runner.sample().pending;
+  }
+
+  const elapsed = performance.now() - t0;
+  const pending = lastPending;
+
+  const errors = pending.filter(e => e.type === 'error');
+  const queryResults = pending.filter(e => e.type === 'query_result');
+  const lastQuery = queryResults[queryResults.length - 1];
+
+  const tableCreated = pending.find(e => e.type === 'table_created');
+  const tableDropped = pending.find(e => e.type === 'table_dropped');
+  const rowInserted = pending.filter(e => e.type === 'row_inserted');
+  const rowUpdated = pending.filter(e => e.type === 'row_updated');
+  const rowDeleted = pending.filter(e => e.type === 'row_deleted');
+  const indexCreated = pending.find(e => e.type === 'index_created');
+  const indexDropped = pending.find(e => e.type === 'index_dropped');
+  const viewCreated = pending.find(e => e.type === 'view_created');
+  const triggerCreated = pending.find(e => e.type === 'trigger_created');
+  const txnBegun = pending.find(e => e.type === 'transaction_begun');
+  const txnCommitted = pending.find(e => e.type === 'transaction_committed');
+  const txnRolledBack = pending.find(e => e.type === 'transaction_rolled_back');
+
+  if (errors.length > 0) {
+    appendError(sql, errors.map(e => e.data.message).join('; '), elapsed);
+  } else if (lastQuery) {
+    appendTable(sql, lastQuery.data.rows, elapsed);
+  } else if (tableCreated) {
+    appendMessage(sql, `Table '${tableCreated.data.table}' created.`, 'ok', elapsed);
+  } else if (tableDropped) {
+    appendMessage(sql, `Table '${tableDropped.data.table}' dropped.`, 'ok', elapsed);
+  } else if (rowInserted.length > 0) {
+    const n = rowInserted.length;
+    const last = rowInserted[n - 1];
+    appendMessage(sql, `${n} row${n !== 1 ? 's' : ''} inserted (last id: ${last.data.id}).`, 'ok', elapsed);
+  } else if (rowUpdated.length > 0) {
+    const last = rowUpdated[rowUpdated.length - 1];
+    const n = last.data.ids ? last.data.ids.length : 1;
+    appendMessage(sql, `${n} row${n !== 1 ? 's' : ''} updated.`, 'ok', elapsed);
+  } else if (rowDeleted.length > 0) {
+    const last = rowDeleted[rowDeleted.length - 1];
+    const n = last.data.ids ? last.data.ids.length : 1;
+    appendMessage(sql, `${n} row${n !== 1 ? 's' : ''} deleted.`, 'ok', elapsed);
+  } else if (indexCreated) {
+    appendMessage(sql, `Index '${indexCreated.data.index}' created.`, 'ok', elapsed);
+  } else if (indexDropped) {
+    appendMessage(sql, `Index dropped.`, 'ok', elapsed);
+  } else if (viewCreated) {
+    appendMessage(sql, `View '${viewCreated.data.name}' created.`, 'ok', elapsed);
+  } else if (triggerCreated) {
+    appendMessage(sql, `Trigger created.`, 'ok', elapsed);
+  } else if (txnBegun) {
+    appendMessage(sql, 'Transaction started.', 'ok', elapsed);
+  } else if (txnCommitted) {
+    appendMessage(sql, 'Transaction committed.', 'ok', elapsed);
+  } else if (txnRolledBack) {
+    appendMessage(sql, 'Transaction rolled back.', 'ok', elapsed);
+  } else {
+    appendMessage(sql, 'OK', 'ok', elapsed);
+  }
+
+  refreshSchema();
+}
+
+// ── DOM Helpers ─────────────────────────────────
+function appendTable(sql, rows, ms) {
+  const out = document.getElementById('output');
+  const entry = document.createElement('div');
+  entry.className = 'output-entry';
+
+  let html = `<div class="sql-echo"><span class="prompt">▸</span> ${esc(sql)} <span class="timing">${ms.toFixed(1)}ms</span></div>`;
+
+  if (rows.length === 0) {
+    html += '<div class="message ok"><span class="row-count">(0 rows)</span></div>';
+  } else {
+    const cols = Object.keys(rows[0]);
+    html += '<div class="result-table-wrap"><table><thead><tr>';
+    for (const c of cols) html += `<th>${esc(c)}</th>`;
+    html += '</tr></thead><tbody>';
+    for (const row of rows) {
+      html += '<tr>';
+      for (const c of cols) {
+        const v = row[c];
+        if (v === null || v === undefined) html += '<td class="null-val">null</td>';
+        else if (typeof v === 'number') html += `<td class="num-val">${v}</td>`;
+        else if (typeof v === 'boolean') html += `<td class="bool-val">${v}</td>`;
+        else html += `<td>${esc(String(v))}</td>`;
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table></div>';
+    html += `<div class="message ok"><span class="row-count">(${rows.length} row${rows.length !== 1 ? 's' : ''})</span></div>`;
+  }
+
+  entry.innerHTML = html;
+  out.appendChild(entry);
+  out.scrollTop = out.scrollHeight;
+}
+
+function appendMessage(sql, msg, type, ms) {
+  const out = document.getElementById('output');
+  const entry = document.createElement('div');
+  entry.className = 'output-entry';
+  entry.innerHTML = `
+    <div class="sql-echo"><span class="prompt">▸</span> ${esc(sql)} <span class="timing">${ms.toFixed(1)}ms</span></div>
+    <div class="message ${type}">${esc(msg)}</div>`;
+  out.appendChild(entry);
+  out.scrollTop = out.scrollHeight;
+}
+
+function appendError(sql, msg, ms) {
+  appendMessage(sql, 'ERROR: ' + msg, 'err', ms);
+}
+
+function esc(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ── Schema Sidebar ──────────────────────────────
+function refreshSchema() {
+  const list = document.getElementById('schema-list');
+  const refs = vm.refs;
+
+  const allNames = refs.list('db/tables/');
+  const tables = new Set();
+  for (const name of allNames) {
+    const m = name.match(/^db\/tables\/([^/]+)\//);
+    if (m) tables.add(m[1]);
+  }
+
+  if (tables.size === 0) {
+    list.innerHTML = '<div class="empty-msg">No tables yet</div>';
+    return;
+  }
+
+  let html = '';
+  for (const table of [...tables].sort()) {
+    const schemaHash = refs.get(`db/tables/${table}/schema`);
+    if (!schemaHash) continue;
+    const schema = vm.store.get(schemaHash);
+
+    html += `<div class="table-item" onclick="executeSql('SELECT * FROM ${table}')"><span class="icon">◇</span> ${esc(table)}</div>`;
+    for (const col of schema.columns) {
+      html += `<div class="column-item">${esc(col.name)} <span class="type">${col.type || ''}</span></div>`;
+    }
+  }
+
+  list.innerHTML = html;
+}
+
+// ── Input Handling ──────────────────────────────
+const input = document.getElementById('input');
+
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    executeSql();
+  }
+  if (e.key === 'ArrowUp' && input.value === '') {
+    if (historyPos > 0) {
+      historyPos--;
+      input.value = history[historyPos];
+      autoResize(input);
+    }
+  }
+  if (e.key === 'ArrowDown' && historyPos >= 0) {
+    if (historyPos < history.length - 1) {
+      historyPos++;
+      input.value = history[historyPos];
+    } else {
+      historyPos = history.length;
+      input.value = '';
+    }
+    autoResize(input);
+  }
+});
+
+input.addEventListener('input', () => autoResize(input));
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+}
+
+// ── Example Clicks ──────────────────────────────
+document.querySelectorAll('.example-item').forEach(el => {
+  el.addEventListener('click', () => {
+    const sql = el.dataset.sql;
+    input.value = sql;
+    autoResize(input);
+    input.focus();
+  });
+});
+</script>
+</body>
+</html>
